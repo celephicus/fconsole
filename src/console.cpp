@@ -18,44 +18,50 @@ typedef struct {
 	console_cell_t* sp;
 	Stream* output;				// An opened stream for text IO.
 	jmp_buf jmpbuf;				// How we do aborts.
-	char inbuf[CONSOLE_INPUT_BUFFER_SIZE + 1];
-	uint8_t inbidx;
 } console_context_t;	
-
 static console_context_t f_ctx;			// Only one instance of the console interpreter. 
 
+// State for consoleAccept(). Done seperately as if not used the linker will remove it.
+typedef struct {
+	char inbuf[CONSOLE_INPUT_BUFFER_SIZE + 1];
+	uint8_t inbidx;
+} accept_context_t;
+static accept_context_t f_accept_context;
+
 // Helpers for commands.
-static void raise(uint8_t rc) {
+
+// Call on error, thanks to the magic of longjmp() it will return to the last setjmp with the error code.
+static void raise(console_rc_t rc) {
 	longjmp(f_ctx.jmpbuf, rc);
 }
 
 // Stack fills from top down.
-static console_cell_t* u_stackbase()			{ return &f_ctx.dstack[CONSOLE_DATA_STACK_SIZE]; }
+#define STACKBASE (&f_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
 
 // Predicates for push & pop.
-#define canPop(n_) (f_ctx.sp < (u_stackbase() - (n_) + 1))	
+#define canPop(n_) (f_ctx.sp < (STACKBASE - (n_) + 1))	
 #define canPush(n_) (f_ctx.sp >= &f_ctx.dstack[0 + (n_)])
 
 // Error handling in commands.
-static void verifyCanPop(uint8_t n) { if (!canPop(n)) raise(CONSOLE_ABORT_DSTACK_UNDERFLOW); }
-static void verifyCanPush(uint8_t n) { if (!canPush(n)) raise(CONSOLE_ABORT_DSTACK_OVERFLOW); }
+static void verifyCanPop(uint8_t n) { if (!canPop(n)) raise(CONSOLE_ERROR_DSTACK_UNDERFLOW); }
+static void verifyCanPush(uint8_t n) { if (!canPush(n)) raise(CONSOLE_ERROR_DSTACK_OVERFLOW); }
 
 // Stack primitives.
 static console_cell_t u_pick(uint8_t i) 	{ return f_ctx.sp[i]; }
 static console_cell_t* u_tos() 				{ verifyCanPop(1); return f_ctx.sp; }
 static console_cell_t* u_nos() 				{ verifyCanPop(2); return f_ctx.sp + 1; }
-static console_cell_t u_depth() 			{ return (u_stackbase() - f_ctx.sp); } 
+static console_cell_t u_depth() 			{ return (STACKBASE - f_ctx.sp); } 
 static console_cell_t u_pop() 				{ verifyCanPop(1); return *(f_ctx.sp++); }
 static void u_push(console_cell_t x) 		{ verifyCanPush(1); *--f_ctx.sp = x; }
-static void clear_stack()					{ f_ctx.sp = u_stackbase(); }
+static void clear_stack()					{ f_ctx.sp = STACKBASE; }
 
 /* Some helper macros for commands. */
 #define binop(op_) 	{ const console_cell_t rhs = u_pop(); console_cell_t* tos = u_tos(); *tos = *tos op_ rhs; } 	// Implement a binary operator.
 #define unop(op_)  	{ console_cell_t* tos = u_tos(); *tos = op_ *tos; }											// Implement a unary operator.
 
-// Hash function as we store command names as a 16 bit hash. The values came from Wikipedia and seem to work well, in that collisions between the hash values
-//  of different commands are very rare.
-// We assume that all characters are printable.
+// Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
+// The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
+// All characters are hashed even non-printable ones.
 #define HASH_START (5381)
 #define HASH_MULT (33)
 uint16_t hash(const char* str) {
@@ -81,7 +87,7 @@ static int8_t convert_digit(char c) {
 		return -1;
 }
 
-// Convert an unsigned number of any base up to 36. 
+// Convert an unsigned number of any base up to 36. Return true on success.
 static bool convert_number(console_ucell_t* number, console_cell_t base, const char* str) {
 	if ('\0' == *str)		// If string is empty then fail.
 		return false;
@@ -95,15 +101,14 @@ static bool convert_number(console_ucell_t* number, console_cell_t base, const c
 		const console_ucell_t old_number = *number;
 		*number = *number * base + digit;
 		if (old_number > *number)		// Magnitude change signals overflow.
-			raise(CONSOLE_ABORT_NUMBER_OVERFLOW);
+			raise(CONSOLE_ERROR_NUMBER_OVERFLOW);
 	}
 	
 	return true;		// If we get here then it must have worked. 
 }  
 
-// Recognisers.
-
-// Pointer to a function that can interpret a single command, either update the context struct and return true , else false if unrecognised.
+// Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return false if they cannot
+//  parse the input string. If they do parse it, they might call error if they cannot push a value onto the stack.
 typedef bool (*console_recogniser)(char* cmd);
 
 /* Recogniser for signed/unsigned decimal number.
@@ -134,11 +139,11 @@ static bool console_r_number_decimal(char* cmd) {
 		break;
 	case ' ':		/* Signed positive number. */
 		if (result > (console_ucell_t)CONSOLE_CELL_MAX)
-			raise(CONSOLE_ABORT_NUMBER_OVERFLOW);
+			raise(CONSOLE_ERROR_NUMBER_OVERFLOW);
 		break;
 	case '-':		/* Signed negative number. */
 		if (result > ((console_ucell_t)CONSOLE_CELL_MIN))
-			raise(CONSOLE_ABORT_NUMBER_OVERFLOW);
+			raise(CONSOLE_ERROR_NUMBER_OVERFLOW);
 		result = (console_ucell_t)-(console_cell_t)result;
 		break;
 	}
@@ -220,8 +225,8 @@ static void console_print_hex() 				{ // I miss printf()! This could be replaced
 	f_ctx.output->print(' '); 
 }
 
-#include "console-cmds-builtin.src"
-#include "console-cmds-user.src"
+#include "console-cmds-builtin.h"
+#include "console-cmds-user.h"
 
 // Execute a single command from a string
 static uint8_t execute(char* cmd) { 
@@ -236,17 +241,17 @@ static uint8_t execute(char* cmd) {
 	};
 
 	// Establish a point where raise will go to when raise() is called.
-	uint8_t abort_reason = setjmp(f_ctx.jmpbuf); // When called in normal execution it returns zero. 
-	if (CONSOLE_ABORT_OK != abort_reason)
-		return abort_reason;
+	console_rc_t command_rc = setjmp(f_ctx.jmpbuf); // When called in normal execution it returns zero. 
+	if (CONSOLE_ERROR_OK != command_rc)
+		return command_rc;
 	
 	// try all recognisers in turn until one works. 
 	for (uint8_t i = 0; i < ELEMENT_COUNT(RECOGNISERS); i += 1) {
 		const console_recogniser recog = (console_recogniser)pgm_read_word(&RECOGNISERS[i]);
 		if (recog(cmd))									// Call recogniser function.
-			return CONSOLE_ABORT_OK;	 									/* Recogniser succeeded. */
+			return CONSOLE_ERROR_OK;	 									/* Recogniser succeeded. */
 	}
-	return CONSOLE_ABORT_UNKNOWN_COMMAND;
+	return CONSOLE_ERROR_UNKNOWN_COMMAND;
 }
 
 static bool is_whitespace(char c) {
@@ -260,7 +265,7 @@ void consoleInit(Stream* output_stream) {
 	clear_stack();
 }
 
-uint8_t consoleProcess(char* str) {
+console_rc_t consoleProcess(char* str) {
 	// Iterate over input, breaking into words.
 	while (1) {
 		while (is_whitespace(*str)) 									// Advance past leading spaces.
@@ -285,43 +290,55 @@ uint8_t consoleProcess(char* str) {
 		}
 		
 		// Execute parsed command and exit on any abort, but return no error for a comment.
-		const uint8_t abort_reason = execute(cmd);
-		if (CONSOLE_ABORT_OK != abort_reason) 
-			return (CONSOLE_ABORT_IGNORE_TO_EOL == abort_reason) ? CONSOLE_ABORT_OK : abort_reason;
+		const console_rc_t command_rc = execute(cmd);
+		if (CONSOLE_ERROR_OK != command_rc) 
+			return (CONSOLE_ERROR_IGNORE_TO_EOL == command_rc) ? CONSOLE_ERROR_OK : command_rc;
 		
 		// If last command break out of loop.
 		if (at_end)
 			break;
 	}
 
-	return CONSOLE_ABORT_OK;
+	return CONSOLE_ERROR_OK;
+}
+
+// Print description of error code. 
+const char* consoleGetErrorDescription(console_rc_t err) {
+	// Stupid AVR, first we have the strings in PROGMEM. 
+	CONSOLE_ERROR_DEFS(X_CONSOLE_ERROR_CODES_DESCRIPTION_STR_DEF)
+	// Then we have an array of pointers to them.
+	static const char* const ERROR_DESCRIPTIONS[COUNT_CONSOLE_ERROR] PROGMEM = {
+		CONSOLE_ERROR_DEFS(X_CONSOLE_ERROR_CODES_DESCRIPTION_STR)
+	};        
+    static const char UNKNOWN[] PROGMEM = "??";
+	return ((err >= 0) && (err < COUNT_CONSOLE_ERROR)) ? (const char*)pgm_read_word(&ERROR_DESCRIPTIONS[err]) : UNKNOWN;
 }
 
 // Input functions.
 void consoleAcceptClear() { 
-	f_ctx.inbidx = 0; 
+	f_accept_context.inbidx = 0; 
 }
 
-uint8_t consoleAccept(char c) {
-	bool overflow = (f_ctx.inbidx >= sizeof(f_ctx.inbuf));
+console_rc_t consoleAccept(char c) {
+	bool overflow = (f_accept_context.inbidx >= sizeof(f_accept_context.inbuf));
 	
 	if (CONSOLE_INPUT_NEWLINE_CHAR == c) {
-		f_ctx.inbuf[f_ctx.inbidx] = '\0';
+		f_accept_context.inbuf[f_accept_context.inbidx] = '\0';
 		consoleAcceptClear();
-		return overflow ? CONSOLE_ACCEPT_OVERFLOW : CONSOLE_ACCEPT_DONE;
+		return overflow ? CONSOLE_ERROR_INPUT_BUFFER_OVERFLOW : CONSOLE_ERROR_OK;
 	}
 	else {	
 		if ((c >= ' ') && (c < (char)0x7f)) {	 // Is is printable?
 			if (!overflow)
-				f_ctx.inbuf[f_ctx.inbidx++] = c;
+				f_accept_context.inbuf[f_accept_context.inbidx++] = c;
 		}
-		return CONSOLE_ACCEPT_PENDING;
+		return CONSOLE_ERROR_ACCEPT_PENDING;
 	}
 }
-char* consoleAcceptBuffer() { return f_ctx.inbuf; }
+char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
 
 // Test functions 
 uint8_t consoleStackDepth() { return u_depth(); }
 console_cell_t consoleStackPick(uint8_t i) { return u_pick(i); }
 void consoleReset() { clear_stack(); }
-uint8_t consoleAcceptBufferLen() { return f_ctx.inbidx; }
+uint8_t consoleAcceptBufferLen() { return f_accept_context.inbidx; }

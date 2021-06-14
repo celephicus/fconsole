@@ -11,41 +11,63 @@ typedef uint16_t console_ucell_t;
 // Stack size, we don't need much.
 #define CONSOLE_DATA_STACK_SIZE (8)
 
-#define CONSOLE_INPUT_BUFFER_SIZE 4
+#define CONSOLE_INPUT_BUFFER_SIZE 40
 #define CONSOLE_INPUT_NEWLINE_CHAR '\r'
 
 // Initialise with a stream for IO. 
 void consoleInit(Stream* output_stream);
 
-// Possible abort codes from eval().
-enum { 
-	CONSOLE_ABORT_OK,
-	CONSOLE_ABORT_NUMBER_OVERFLOW,
-	CONSOLE_ABORT_INTERNAL_ERROR,			// Not used at present...
-	CONSOLE_ABORT_DSTACK_UNDERFLOW,			// Attempt to pop on an empty stack.
-	CONSOLE_ABORT_DSTACK_OVERFLOW,			// Attempt to push on an empty stack.
-	CONSOLE_ABORT_IGNORE_TO_EOL,			// Used to implement comments.
-	CONSOLE_ABORT_UNKNOWN_COMMAND,			// Constant or command not recognised.
+// Define possible error codes and a corresponding error message with the magic of x-macros.
+// Why do it like this? So that the messages can _never_ get out of step with the codes. and it allows the addition of more codes & messages.
+// And it's a powerful technique that is worth learning. See https://en.wikipedia.org/wiki/X_Macro.
+#define CONSOLE_ERROR_DEFS(X)																	\
+ X(OK,						"success")															\
+ X(NUMBER_OVERFLOW,			"number overflow")													\
+ X(DSTACK_UNDERFLOW,		"data stack underflow")												\
+ X(DSTACK_OVERFLOW,			"data stack overflow")												\
+ X(UNKNOWN_COMMAND,			"unknown command")													\
+ X(INPUT_BUFFER_OVERFLOW,	"input buffer overflow")	/* Only returned by consoleAccept(). */	\
+ X(IGNORE_TO_EOL,			"")							/* Never seen by caller. */				\
+ X(ACCEPT_PENDING,			"")							/* Only returned by consoleAccept(). */	\
+ 
+// Macro that generates error enum items.
+#define X_CONSOLE_ERROR_CODES_ENUM(name_, desc_) 		\
+ CONSOLE_ERROR_##name_,
+
+// Macros that generate a string description
+#define X_CONSOLE_ERROR_CODES_DESCRIPTION_STR_DEF(name_, desc_) 				\
+    static const char CONSOLE_ERROR_CODE_DESCR_##name_[] PROGMEM = desc_;
+#define X_CONSOLE_ERROR_CODES_DESCRIPTION_STR(name_, desc_) 					\
+    CONSOLE_ERROR_CODE_DESCR_##name_,
+
+// Declare the error values. These are only assigned to a console_rc_t, this is signed as we might want negative codes sometime.
+enum {
+	CONSOLE_ERROR_DEFS(X_CONSOLE_ERROR_CODES_ENUM)
+	COUNT_CONSOLE_ERROR
 };
-		
+
+typedef int8_t console_rc_t;
+
+// Return a short description of the error as a pointer to a PROGMEM string. 
+const char* consoleGetErrorDescription(console_rc_t err);
+
 // Evaluate a line of string input.
-uint8_t consoleProcess(char* str);
+console_rc_t consoleProcess(char* str);
 
 // Input functions, not essential but helpful.
 void consoleAcceptClear();
-enum {
-	CONSOLE_ACCEPT_DONE,
-	CONSOLE_ACCEPT_OVERFLOW,
-	CONSOLE_ACCEPT_PENDING,
-};
-uint8_t consoleAccept(char c);
+
+/* Read chars into a buffer, returning CONSOLE_ERROR_ACCEPT_PENDING. Only CONSOLE_INPUT_BUFFER_SIZE chars are stored.
+	If the character CONSOLE_INPUT_NEWLINE_CHAR is seen, then return CONSOLE_ERROR_OK if no overflow, else CONSOLE_ERROR_INPUT_OVERFLOW.
+	In either case the buffer is nul terminated, but not all chars will have been stored on overflow. 
+*/
+console_rc_t consoleAccept(char c);
 char* consoleAcceptBuffer();
 
 // These functions are for unit tests and should not be used for real code.
 uint8_t consoleStackDepth();
 console_cell_t consoleStackPick(uint8_t i);
 void consoleReset();
-uint8_t consoleAcceptBufferLen();
 
 #endif // CONSOLE_H__
 
