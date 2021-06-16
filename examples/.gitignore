@@ -1,0 +1,5 @@
+# COMMENTS CANNOT BE ON THE SAME LINE AS PATTERNS!!!!!!!!! That's an hour of my life I'll never get back!
+# See https://sodocumentation.net/git/topic/245/ignoring-files-and-folders
+
+# Ignore all directories as these are Atmel Studio projects that I use for debugging that will have a gazillion files copied from the Arduino core & libs.
+as-*/
