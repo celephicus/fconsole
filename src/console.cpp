@@ -9,74 +9,93 @@
 // How many elements in an array?
 #define ELEMENT_COUNT(x_) (sizeof(x_) / sizeof((x_)[0]))
 
-// Unused static functions are OK. The linker will remove them.
-#pragma GCC diagnostic ignored "-Wunused-function"
-
-// Struct to hold the console interpreter's state.
-typedef struct {
-	console_cell_t dstack[CONSOLE_DATA_STACK_SIZE];
-	console_cell_t* sp;
-	Stream* output;				// An opened stream for text IO.
-	jmp_buf jmpbuf;				// How we do aborts.
-} console_context_t;	
-static console_context_t f_ctx;			// Only one instance of the console interpreter. 
-
-// State for consoleAccept(). Done seperately as if not used the linker will remove it.
-typedef struct {
-	char inbuf[CONSOLE_INPUT_BUFFER_SIZE + 1];
-	uint8_t inbidx;
-} accept_context_t;
-static accept_context_t f_accept_context;
-
-// Helpers for commands.
-
-// Call on error, thanks to the magic of longjmp() it will return to the last setjmp with the error code.
-static void raise(console_rc_t rc) {
-	longjmp(f_ctx.jmpbuf, rc);
-}
-
-// Stack fills from top down.
-#define STACKBASE (&f_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
-
 // Predicates for push & pop.
-#define canPop(n_) (f_ctx.sp < (STACKBASE - (n_) + 1))	
+#define canPop(n_) (f_ctx.sp < (STACKBASE - (n_) + 1))
 #define canPush(n_) (f_ctx.sp >= &f_ctx.dstack[0 + (n_)])
 
 // Error handling in commands.
-static void verifyCanPop(uint8_t n) { if (!canPop(n)) raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); }
-static void verifyCanPush(uint8_t n) { if (!canPush(n)) raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
+#define verifyCanPop(n_)	do { if (!canPop(n_)) raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); } while (0)
+#define verifyCanPush(n_)	do { if (!canPush(n_)) raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); } while (0)
+
 
 // Stack primitives.
-static console_cell_t u_pick(uint8_t i) 	{ return f_ctx.sp[i]; }
-static console_cell_t* u_tos() 				{ verifyCanPop(1); return f_ctx.sp; }
-static console_cell_t* u_nos() 				{ verifyCanPop(2); return f_ctx.sp + 1; }
-static console_cell_t u_depth() 			{ return (STACKBASE - f_ctx.sp); } 
-static console_cell_t u_pop() 				{ verifyCanPop(1); return *(f_ctx.sp++); }
-static void u_push(console_cell_t x) 		{ verifyCanPush(1); *--f_ctx.sp = x; }
-static void clear_stack()					{ f_ctx.sp = STACKBASE; }
+console_cell_t Fconsole::stackbase() { return &_dstack[CONSOLE_DATA_STACK_SIZE]; }		// Stack fills from top down.
+console_cell_t Fconsole::u_pick_unchecked(uint8_t i) 	{ return _sp[i]; }
+console_cell_t* Fconsole::u_tos() 			{ verifyCanPop(1); return _sp }
+console_cell_t* Fconsole::u_nos() 			{ verifyCanPop(2); return _sp + 1; }
+console_cell_t Fconsole::u_depth() 			{ return (stackbase() - _sp); }
+console_cell_t Fconsole::u_pop() 			{ verifyCanPop(1); return *_sp++; }
+void u_push(console_cell_t x) 				{ verifyCanPush(1); *--_sp = x; }
+void clear_stack()							{ _sp = stackbase(); }
 
-/* Some helper macros for commands. */
-#define binop(op_) 	{ const console_cell_t rhs = u_pop(); console_cell_t* tos = u_tos(); *tos = *tos op_ rhs; } 	// Implement a binary operator.
-#define unop(op_)  	{ console_cell_t* tos = u_tos(); *tos = op_ *tos; }											// Implement a unary operator.
+// Call on error, thanks to the magic of longjmp() it will return to the last setjmp with the error code.
+void raise(console_rc_t rc) {
+	longjmp(f_ctx.jmpbuf, rc);
+}
+
+//
+// Public methods.
+//
+
+Fconsole::Fconsole(Stream& stream) : _stream(stream) { }
+	
+void Fconsole::begin(Stream& stream) {
+	reset();
+}
+
+void Fconsole::service() {}
+	
+const char* Fconsole::getErrorDescription(console_rc_t err) {
+	switch(err) {
+		case CONSOLE_RC_ERROR_NUMBER_OVERFLOW: return PSTR("number overflow");
+		case CONSOLE_RC_ERROR_DSTACK_UNDERFLOW: return PSTR("stack underflow");
+		case CONSOLE_RC_ERROR_DSTACK_OVERFLOW: return PSTR("stack overflow");
+		case CONSOLE_RC_ERROR_UNKNOWN_COMMAND: return PSTR("unknown command");
+		case CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW: return PSTR("input buffer overflow");
+		default: return PSTR("");
+	}
+}
+console_rc_t Fconsole::process(char* str);
+void Fconsole::acceptClear() { 
+	_inbidx = 0;
+
+}
+console_rc_t Fconsole::accept(char c);
+
+char* Fconsole::acceptBuffer() { return _inbuf; }
+
+uint8_t Fconsole::stackDepth() { return u_depth(); }
+	
+console_cell_t Fconsole::stackPick(uint8_t i) { 
+	return u_pick_unchecked(i); 
+}
+	
+void Fconsole::reset() {
+	clear_stack();
+	acceptClear();
+}
+	
+//
+// Protected methods.
+//
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
 // All characters are hashed even non-printable ones.
-#define HASH_START (5381)
-#define HASH_MULT (33)
-uint16_t hash(const char* str) {
-	uint16_t h = HASH_START;
+uint16_t Fconsole::hash(const char* str) {
+	uint16_t h = Fconsole::HASH_START;
 	char c;
 	while ('\0' != (c = *str++)) {
-		if ((c >= 'a') && (c <= 'z')) 
-			c -= 'a' - 'A';
-		h = (h * HASH_MULT) ^ (uint16_t)c;
+		if ((c >= 'a') && (c <= 'z'))
+		c -= 'a' - 'A';
+		h = (h * Fconsole::HASH_MULT) ^ (uint16_t)c;
 	}
 	return h;
-}	 
+}
+
 
 // Convert a single character in range [0-9a-zA-Z] to a number up to 25. A negative value is returned on error. 
-static int8_t convert_digit(char c) {
+int8_t Fconsole::convert_digit(char c) {
 	if ((c >= '0') && (c <= '9')) 
 		return (int8_t)c - '0';
 	else if ((c >= 'a') && (c <= 'z')) 
@@ -88,7 +107,7 @@ static int8_t convert_digit(char c) {
 }
 
 // Convert an unsigned number of any base up to 36. Return true on success.
-static bool convert_number(console_ucell_t* number, console_cell_t base, const char* str) {
+bool Fconsole::convert_number(console_ucell_t* number, console_cell_t base, const char* str) {
 	if ('\0' == *str)		// If string is empty then fail.
 		return false;
 	
@@ -101,24 +120,20 @@ static bool convert_number(console_ucell_t* number, console_cell_t base, const c
 		const console_ucell_t old_number = *number;
 		*number = *number * base + digit;
 		if (old_number > *number)		// Magnitude change signals overflow.
-			raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
+			raise(Fconsole::RC_ERROR_NUMBER_OVERFLOW);
 	}
 	
 	return true;		// If we get here then it must have worked. 
 }  
 
-// Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return false if they cannot
-//  parse the input string. If they do parse it, they might call error if they cannot push a value onto the stack.
-typedef bool (*console_recogniser)(char* cmd);
-
 /* Recogniser for signed/unsigned decimal number.
 	The number format is as follows:
 		An initial '-' flags the number as negative, the '-' character is illegal anywhere else in the word.
 		An initial '+' flags the number as unsigned. In which case the range of the number is up to the maximum
-		  _unsigned_ value for the type before overflow is flagged.
+			_unsigned_ value for the type before overflow is flagged.
 	Return values are good, bad, overflow.
- */
-static bool console_r_number_decimal(char* cmd) {
+	*/
+bool Fconsole::console_r_number_decimal(char* cmd) {
 	console_ucell_t result;
 	char sign;
 	
@@ -154,7 +169,7 @@ static bool console_r_number_decimal(char* cmd) {
 }
 
 /* Recogniser for hex numbers preceded by a '$'. Return values are good, bad, overflow. */
-static bool console_r_number_hex(char* cmd) {
+bool Fconsole::console_r_number_hex(char* cmd) {
 	if ('$' != *cmd) 
 		return false;
 
@@ -168,7 +183,7 @@ static bool console_r_number_hex(char* cmd) {
 }
 
 // String with a leading '"' pushes address of string which is zero terminated.
-static bool console_r_string(char* cmd) {
+bool Fconsole::console_r_string(char* cmd) {
 	if ('"' != cmd[0])
 		return false;
 
@@ -206,10 +221,10 @@ exit:	*wp = '\0';						// Terminate string in input buffer.
 }
 
 // Output routines.
-static void console_print_string() 				{ f_ctx.output->print((const char*)u_pop()); f_ctx.output->print(' '); }
-static void console_print_signed_decimal() 		{ f_ctx.output->print(u_pop(), DEC); f_ctx.output->print(' '); }
-static void console_print_unsigned_decimal() 	{ const console_ucell_t x = (console_ucell_t)u_pop(); f_ctx.output->print('+'); f_ctx.output->print(x, DEC); f_ctx.output->print(' '); }
-static void console_print_hex() 				{ // I miss printf()! This could be replaced with sprintf() but it's huge.
+void Fconsole::console_print_string() 			{ _stream.print((const char*)u_pop()); _stream.print(' '); }
+void Fconsole::console_print_signed_decimal() 	{ _stream.print(u_pop(), DEC); _stream.print(' '); }
+void Fconsole::console_print_unsigned_decimal() { const console_ucell_t x = (console_ucell_t)u_pop(); _stream.print('+'); _stream.print(x, DEC); _stream.print(' '); }
+void Fconsole::console_print_hex() 				{ // I miss printf()! This could be replaced with sprintf() but it's huge.
 	char buf[sizeof(console_ucell_t)*2+1];
 	char *b = buf + sizeof(buf);
 	*--b = '\0';
@@ -220,16 +235,35 @@ static void console_print_hex() 				{ // I miss printf()! This could be replaced
 			*b += 'A' - '9' -1;
 		x >>= 4;
 	}
-	f_ctx.output->print('$'); 
-	f_ctx.output->print(buf); 
-	f_ctx.output->print(' '); 
+	_stream.print('$'); 
+	_stream.print(buf); 
+	_stream.print(' '); 
 }
 
-#include "console-cmds-builtin.h"
-#include "console-cmds-user.h"
+/* Some helper macros for commands. */
+#define binop(op_) 	{ const console_cell_t rhs = u_pop(); *u_tos() = *u_tos() op_ rhs; } 	// Implement a binary operator.
+#define unop(op_)  	{ *tos = op_ *tos; }													// Implement a unary operator.
+
+// #include "console-cmds-builtin.h"
+// #include "console-cmds-user.h"
+
+bool Fconsole::console_cmds_builtin(char* cmd) {
+	switch (hash(cmd)) {
+		case /** . **/ 0xb58b: console_print_signed_decimal(); break;		// Pop and print in signed decimal.
+		case /** U. **/ 0x73de: console_print_unsigned_decimal(); break;	// Pop and print in unsigned decimal, with leading `+'.
+		case /** $. **/ 0x658f: console_print_hex(); break;					// Pop and print as 4 hex digits decimal with leading `$'.
+		case /** ." **/ 0x66c9: console_print_string(); break; 				// Pop and print string.
+		case /** DEPTH **/ 0xb508: u_push(u_depth()); break;				// Push stack depth.
+		case /** CLEAR **/ 0x9f9c: clear_stack(); break;					// Clear stack so that it has zero depth.
+		case /** DROP **/ 0x5c2c: u_pop(); break;							// Remove top item from stack.
+		case /** HASH **/ 0x90b7: { *u_tos() = hash((const char*)*u_tos()); } break; // Pop string and push hash value.
+		default: return false;
+	}
+	return true;
+}
 
 // Execute a single command from a string
-static uint8_t execute(char* cmd) { 
+uint8_t Fconsole::execute(char* cmd) { 
 	static const console_recogniser RECOGNISERS[] PROGMEM = {
 		/* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 			can have potentially any hash value so could look like commands. */
@@ -260,10 +294,7 @@ static bool is_whitespace(char c) {
 
 // External functions.
 
-void consoleInit(Stream* output_stream) {
-	f_ctx.output = output_stream;
-	clear_stack();
-}
+
 
 console_rc_t consoleProcess(char* str) {
 	// Iterate over input, breaking into words.
@@ -302,22 +333,8 @@ console_rc_t consoleProcess(char* str) {
 	return CONSOLE_RC_OK;
 }
 
-// Print description of error code. 
-const char* consoleGetErrorDescription(console_rc_t err) {
-	switch(err) {
-		case CONSOLE_RC_ERROR_NUMBER_OVERFLOW: return PSTR("number overflow");
-		case CONSOLE_RC_ERROR_DSTACK_UNDERFLOW: return PSTR("stack underflow");
-		case CONSOLE_RC_ERROR_DSTACK_OVERFLOW: return PSTR("stack overflow");
-		case CONSOLE_RC_ERROR_UNKNOWN_COMMAND: return PSTR("unknown command");
-		case CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW: return PSTR("input buffer overflow");
-		default: return PSTR("");
-	}
-}
 
 // Input functions.
-void consoleAcceptClear() { 
-	f_accept_context.inbidx = 0; 
-}
 
 console_rc_t consoleAccept(char c) {
 	bool overflow = (f_accept_context.inbidx >= sizeof(f_accept_context.inbuf));
@@ -335,10 +352,3 @@ console_rc_t consoleAccept(char c) {
 		return CONSOLE_RC_ACCEPT_PENDING;
 	}
 }
-char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
-
-// Test functions 
-uint8_t consoleStackDepth() { return u_depth(); }
-console_cell_t consoleStackPick(uint8_t i) { return u_pick(i); }
-void consoleReset() { clear_stack(); }
-//uint8_t consoleAcceptBufferLen() { return f_accept_context.inbidx; }
