@@ -9,7 +9,7 @@ static bool console_cmds_builtin(char* cmd) {
 		case /** DEPTH **/ 0xb508: u_push(u_depth()); break;				// Push stack depth.
 		case /** CLEAR **/ 0x9f9c: clear_stack(); break;					// Clear stack so that it has zero depth.
 		case /** DROP **/ 0x5c2c: u_pop(); break;							// Remove top item from stack.
-		case /** HASH **/ 0x90b7: { console_cell_t* tos = u_tos(); *tos = hash((const char*)*tos); } break; // Pop string and push hash value.
+		case /** HASH **/ 0x90b7: { *u_tos() = hash((const char*)*u_tos()); } break; // Pop string and push hash value.
 		default: return false;
 	}
 	return true;

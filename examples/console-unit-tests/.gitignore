@@ -1,11 +1,9 @@
-# COMMENTS CANNOT BE ON THE SAME LINE AS PATTERNS!!!!!!!!! That's an hour of my life I'll never get back!
-# See https://sodocumentation.net/git/topic/245/ignoring-files-and-folders
-
 # Ignore all files since I copy the contents of `src' here for testing, rather than going through the rigmarole of installing it as an Arduino lib.
 *
 
-# but specifically include the Arduino sketch file.
+# But specifically include the Arduino sketch file. And the user commands file since this is edited.
 !*.ino
 !.gitignore
+!console-cmds-user.h
 
 
