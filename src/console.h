@@ -17,34 +17,21 @@ typedef uint16_t console_ucell_t;
 // Initialise with a stream for IO. 
 void consoleInit(Stream* output_stream);
 
-// Define possible error codes and a corresponding error message with the magic of x-macros.
-// Why do it like this? So that the messages can _never_ get out of step with the codes. and it allows the addition of more codes & messages.
-// And it's a powerful technique that is worth learning. See https://en.wikipedia.org/wiki/X_Macro.
-#define CONSOLE_ERROR_DEFS(X)																	\
- X(OK,						"success")															\
- X(NUMBER_OVERFLOW,			"number overflow")													\
- X(DSTACK_UNDERFLOW,		"data stack underflow")												\
- X(DSTACK_OVERFLOW,			"data stack overflow")												\
- X(UNKNOWN_COMMAND,			"unknown command")													\
- X(INPUT_BUFFER_OVERFLOW,	"input buffer overflow")	/* Only returned by consoleAccept(). */	\
- X(IGNORE_TO_EOL,			"")							/* Never seen by caller. */				\
- X(ACCEPT_PENDING,			"")							/* Only returned by consoleAccept(). */	\
- 
-// Macro that generates error enum items.
-#define X_CONSOLE_ERROR_CODES_ENUM(name_, desc_) 		\
- CONSOLE_ERROR_##name_,
-
-// Macros that generate a string description
-#define X_CONSOLE_ERROR_CODES_DESCRIPTION_STR_DEF(name_, desc_) 				\
-    static const char CONSOLE_ERROR_CODE_DESCR_##name_[] PROGMEM = desc_;
-#define X_CONSOLE_ERROR_CODES_DESCRIPTION_STR(name_, desc_) 					\
-    CONSOLE_ERROR_CODE_DESCR_##name_,
-
-// Declare the error values. These are only assigned to a console_rc_t, this is signed as we might want negative codes sometime.
+// Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative values are more like status codes that do not indicate an error.
 enum {
-	CONSOLE_ERROR_DEFS(X_CONSOLE_ERROR_CODES_ENUM)
-	COUNT_CONSOLE_ERROR
-};
+	CONSOLE_RC_OK =								0,	// Returned by consoleProcess() for no errors and by consoleAccept() if a newline was read with no overflow.
+	
+	// Errors: something has gone wrong.
+	CONSOLE_RC_ERROR_NUMBER_OVERFLOW =			1,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds,
+	CONSOLE_RC_ERROR_DSTACK_UNDERFLOW =			2,	// Stack underflowed (attempt to pop or examine too many items).
+	CONSOLE_RC_ERROR_DSTACK_OVERFLOW =			3,	// Stack overflowed (attempt to push too many items).
+	CONSOLE_RC_ERROR_UNKNOWN_COMMAND =			4,	// A command or value was not recognised.
+	CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW =	5,	// Accept input buffer has been sent more characters than it can hold. Only returned by consoleAccept(). 
+	
+	// Status
+	CONSOLE_RC_SIGNAL_IGNORE_TO_EOL = -1,				// Internal signal used to implement comments.
+	CONSOLE_RC_ACCEPT_PENDING = -2,					// Only returned by consoleAccept() to signal that it is still accepting characters.
+	};
 
 typedef int8_t console_rc_t;
 

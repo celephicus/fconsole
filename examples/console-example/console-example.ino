@@ -30,19 +30,19 @@ void loop() {
 	if (Serial.available()) {									// If a character is available...
 		const char c = Serial.read();
 		console_rc_t rc = consoleAccept(c);						// Add it to the input buffer.
-		if (CONSOLE_ERROR_INPUT_BUFFER_OVERFLOW == rc) {		// Check for overflow...
+		if (CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW == rc) {		// Check for overflow...
 			Serial.print(consoleAcceptBuffer());				// Echo input line back to terminal. 
 			print_console_seperator();		
 			Serial.print(F("Input buffer overflow."));
 			print_console_prompt();
 		}
-		else if (CONSOLE_ERROR_OK == rc) {						// Check for a newline...
+		else if (CONSOLE_RC_OK == rc) {						// Check for a newline...
 			Serial.print(consoleAcceptBuffer());				// Echo input line back to terminal. 
 			print_console_seperator();							// Print separator before output.
 			rc = consoleProcess(consoleAcceptBuffer());			// Process input string from input buffer filled by accept and record error code. 
-			if (CONSOLE_ERROR_OK != rc) {						// If all went well then we get an OK status code
+			if (CONSOLE_RC_OK != rc) {						// If all went well then we get an OK status code
 				Serial.print(F("Error: "));						// Print error code:(
-				Serial.print((const __FlashStringHelper *)consoleGetErrorDescription(rc));	// Piint description.
+				Serial.print((const __FlashStringHelper *)consoleGetErrorDescription(rc));	// Print description.
 				Serial.print(F(": "));
 				Serial.print(rc);
 			}

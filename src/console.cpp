@@ -43,8 +43,8 @@ static void raise(console_rc_t rc) {
 #define canPush(n_) (f_ctx.sp >= &f_ctx.dstack[0 + (n_)])
 
 // Error handling in commands.
-static void verifyCanPop(uint8_t n) { if (!canPop(n)) raise(CONSOLE_ERROR_DSTACK_UNDERFLOW); }
-static void verifyCanPush(uint8_t n) { if (!canPush(n)) raise(CONSOLE_ERROR_DSTACK_OVERFLOW); }
+static void verifyCanPop(uint8_t n) { if (!canPop(n)) raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); }
+static void verifyCanPush(uint8_t n) { if (!canPush(n)) raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
 
 // Stack primitives.
 static console_cell_t u_pick(uint8_t i) 	{ return f_ctx.sp[i]; }
@@ -101,7 +101,7 @@ static bool convert_number(console_ucell_t* number, console_cell_t base, const c
 		const console_ucell_t old_number = *number;
 		*number = *number * base + digit;
 		if (old_number > *number)		// Magnitude change signals overflow.
-			raise(CONSOLE_ERROR_NUMBER_OVERFLOW);
+			raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
 	}
 	
 	return true;		// If we get here then it must have worked. 
@@ -139,11 +139,11 @@ static bool console_r_number_decimal(char* cmd) {
 		break;
 	case ' ':		/* Signed positive number. */
 		if (result > (console_ucell_t)CONSOLE_CELL_MAX)
-			raise(CONSOLE_ERROR_NUMBER_OVERFLOW);
+			raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
 		break;
 	case '-':		/* Signed negative number. */
 		if (result > ((console_ucell_t)CONSOLE_CELL_MIN))
-			raise(CONSOLE_ERROR_NUMBER_OVERFLOW);
+			raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
 		result = (console_ucell_t)-(console_cell_t)result;
 		break;
 	}
@@ -242,16 +242,16 @@ static uint8_t execute(char* cmd) {
 
 	// Establish a point where raise will go to when raise() is called.
 	console_rc_t command_rc = setjmp(f_ctx.jmpbuf); // When called in normal execution it returns zero. 
-	if (CONSOLE_ERROR_OK != command_rc)
+	if (CONSOLE_RC_OK != command_rc)
 		return command_rc;
 	
 	// try all recognisers in turn until one works. 
 	for (uint8_t i = 0; i < ELEMENT_COUNT(RECOGNISERS); i += 1) {
 		const console_recogniser recog = (console_recogniser)pgm_read_word(&RECOGNISERS[i]);
 		if (recog(cmd))									// Call recogniser function.
-			return CONSOLE_ERROR_OK;	 									/* Recogniser succeeded. */
+			return CONSOLE_RC_OK;	 									/* Recogniser succeeded. */
 	}
-	return CONSOLE_ERROR_UNKNOWN_COMMAND;
+	return CONSOLE_RC_ERROR_UNKNOWN_COMMAND;
 }
 
 static bool is_whitespace(char c) {
@@ -291,27 +291,27 @@ console_rc_t consoleProcess(char* str) {
 		
 		// Execute parsed command and exit on any abort, but return no error for a comment.
 		const console_rc_t command_rc = execute(cmd);
-		if (CONSOLE_ERROR_OK != command_rc) 
-			return (CONSOLE_ERROR_IGNORE_TO_EOL == command_rc) ? CONSOLE_ERROR_OK : command_rc;
+		if (CONSOLE_RC_OK != command_rc) 
+			return (CONSOLE_RC_SIGNAL_IGNORE_TO_EOL == command_rc) ? CONSOLE_RC_OK : command_rc;
 		
 		// If last command break out of loop.
 		if (at_end)
 			break;
 	}
 
-	return CONSOLE_ERROR_OK;
+	return CONSOLE_RC_OK;
 }
 
 // Print description of error code. 
 const char* consoleGetErrorDescription(console_rc_t err) {
-	// Stupid AVR, first we have the strings in PROGMEM. 
-	CONSOLE_ERROR_DEFS(X_CONSOLE_ERROR_CODES_DESCRIPTION_STR_DEF)
-	// Then we have an array of pointers to them.
-	static const char* const ERROR_DESCRIPTIONS[COUNT_CONSOLE_ERROR] PROGMEM = {
-		CONSOLE_ERROR_DEFS(X_CONSOLE_ERROR_CODES_DESCRIPTION_STR)
-	};        
-    static const char UNKNOWN[] PROGMEM = "??";
-	return ((err >= 0) && (err < COUNT_CONSOLE_ERROR)) ? (const char*)pgm_read_word(&ERROR_DESCRIPTIONS[err]) : UNKNOWN;
+	switch(err) {
+		case CONSOLE_RC_ERROR_NUMBER_OVERFLOW: return PSTR("number overflow");
+		case CONSOLE_RC_ERROR_DSTACK_UNDERFLOW: return PSTR("stack underflow");
+		case CONSOLE_RC_ERROR_DSTACK_OVERFLOW: return PSTR("stack overflow");
+		case CONSOLE_RC_ERROR_UNKNOWN_COMMAND: return PSTR("unknown command");
+		case CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW: return PSTR("input buffer overflow");
+		default: return PSTR("");
+	}
 }
 
 // Input functions.
@@ -325,14 +325,14 @@ console_rc_t consoleAccept(char c) {
 	if (CONSOLE_INPUT_NEWLINE_CHAR == c) {
 		f_accept_context.inbuf[f_accept_context.inbidx] = '\0';
 		consoleAcceptClear();
-		return overflow ? CONSOLE_ERROR_INPUT_BUFFER_OVERFLOW : CONSOLE_ERROR_OK;
+		return overflow ? CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW : CONSOLE_RC_OK;
 	}
 	else {	
 		if ((c >= ' ') && (c < (char)0x7f)) {	 // Is is printable?
 			if (!overflow)
 				f_accept_context.inbuf[f_accept_context.inbidx++] = c;
 		}
-		return CONSOLE_ERROR_ACCEPT_PENDING;
+		return CONSOLE_RC_ACCEPT_PENDING;
 	}
 }
 char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
@@ -341,4 +341,4 @@ char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
 uint8_t consoleStackDepth() { return u_depth(); }
 console_cell_t consoleStackPick(uint8_t i) { return u_pick(i); }
 void consoleReset() { clear_stack(); }
-uint8_t consoleAcceptBufferLen() { return f_accept_context.inbidx; }
+//uint8_t consoleAcceptBufferLen() { return f_accept_context.inbidx; }
