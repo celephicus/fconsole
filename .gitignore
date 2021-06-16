@@ -1,2 +1,8 @@
-# Exclude Atmel Studio projects that I use for debugging in the examples directory. By convention these are in directory with a name beginning `as-'.
-**/as-*   # Match all directories matching the pattern. 
+# COMMENTS CANNOT BE ON THE SAME LINE AS PATTERNS!!!!!!!!! That's an hour of my life I'll never get back!
+
+# Exclude Atmel Studio projects that I use for debugging in the examples dir. By convention these are in dirs with a name beginning `as-'.
+**/as-*/
+
+# Stupid Atmel Studio is prone to creating these in the most surprising places...
+.vs/    
+
