@@ -16,7 +16,6 @@
 typedef struct {
 	console_cell_t dstack[CONSOLE_DATA_STACK_SIZE];
 	console_cell_t* sp;
-	Stream* output;				// An opened stream for text IO.
 	jmp_buf jmpbuf;				// How we do aborts.
 } console_context_t;	
 static console_context_t f_ctx;			// Only one instance of the console interpreter. 
@@ -205,25 +204,20 @@ exit:	*wp = '\0';						// Terminate string in input buffer.
 	return true;
 }
 
-// Output routines.
-static void console_print_string() 				{ f_ctx.output->print((const char*)u_pop()); f_ctx.output->print(' '); }
-static void console_print_signed_decimal() 		{ f_ctx.output->print(u_pop(), DEC); f_ctx.output->print(' '); }
-static void console_print_unsigned_decimal() 	{ const console_ucell_t x = (console_ucell_t)u_pop(); f_ctx.output->print('+'); f_ctx.output->print(x, DEC); f_ctx.output->print(' '); }
-static void console_print_hex() 				{ // I miss printf()! This could be replaced with sprintf() but it's huge.
-	char buf[sizeof(console_ucell_t)*2+1];
-	char *b = buf + sizeof(buf);
-	*--b = '\0';
-	console_ucell_t x = u_pop();
-	for (uint8_t i = 0; i < sizeof(console_ucell_t)*2; i += 1) {
-		*--b = (x & 15) + '0';
-		if (*b > '9')
-			*b += 'A' - '9' -1;
-		x >>= 4;
+// Example output routines.
+#if 0
+console_print(uint8_t s, console_cell_t x) {
+	switch (s) {
+		case CONSOLE_PRINT_NEWLINE:		printf("\r\n")); (void)x; break;
+		case CONSOLE_PRINT_SIGNED:		printf("%d ", x); break;
+		case CONSOLE_PRINT_UNSIGNED:	printf("+%u ", (console_ucell_t)x); break;
+		case CONSOLE_PRINT_HEX:			printf("$%4x ", (console_ucell_t)x); break;
+		case CONSOLE_PRINT_STR:			 fall through... */
+		case CONSOLE_PRINT_STR_P:		printf("%s ", (const char*)x); break;
+		default:						/* ignore */; break;
 	}
-	f_ctx.output->print('$'); 
-	f_ctx.output->print(buf); 
-	f_ctx.output->print(' '); 
 }
+#endif
 
 #include "console-cmds-builtin.h"
 #include "console-cmds-user.h"
@@ -260,8 +254,7 @@ static bool is_whitespace(char c) {
 
 // External functions.
 
-void consoleInit(Stream* output_stream) {
-	f_ctx.output = output_stream;
+void consoleInit() {
 	clear_stack();
 }
 

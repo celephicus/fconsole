@@ -11,11 +11,23 @@ typedef uint16_t console_ucell_t;
 // Stack size, we don't need much.
 #define CONSOLE_DATA_STACK_SIZE (8)
 
+// Input buffer 
 #define CONSOLE_INPUT_BUFFER_SIZE 40
 #define CONSOLE_INPUT_NEWLINE_CHAR '\r'
 
-// Initialise with a stream for IO. 
-void consoleInit(Stream* output_stream);
+// Initialise. 
+void consoleInit();
+
+// Function to print on the output stream. You must supply this. An example is in a comment in console.cpp.
+enum {
+	CONSOLE_PRINT_NEWLINE,
+	CONSOLE_PRINT_SIGNED,
+	CONSOLE_PRINT_UNSIGNED,
+	CONSOLE_PRINT_HEX,
+	CONSOLE_PRINT_STR,
+	CONSOLE_PRINT_STR_P,
+};
+void consolePrint(uint8_t s, console_cell_t x);
 
 // Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative values are more like status codes that do not indicate an error.
 enum {
@@ -27,11 +39,12 @@ enum {
 	CONSOLE_RC_ERROR_DSTACK_OVERFLOW =			3,	// Stack overflowed (attempt to push too many items).
 	CONSOLE_RC_ERROR_UNKNOWN_COMMAND =			4,	// A command or value was not recognised.
 	CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW =	5,	// Accept input buffer has been sent more characters than it can hold. Only returned by consoleAccept(). 
+	CONSOLE_RC_ERROR_INDEX_OUT_OF_RANGE =		6,	// Index out of range.
 	
 	// Status
-	CONSOLE_RC_SIGNAL_IGNORE_TO_EOL = -1,				// Internal signal used to implement comments.
+	CONSOLE_RC_SIGNAL_IGNORE_TO_EOL = -1,			// Internal signal used to implement comments.
 	CONSOLE_RC_ACCEPT_PENDING = -2,					// Only returned by consoleAccept() to signal that it is still accepting characters.
-	};
+};
 
 typedef int8_t console_rc_t;
 
