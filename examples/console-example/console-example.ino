@@ -6,23 +6,37 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-static void print_console_prompt() {
-	Serial.println();
-	Serial.print(F("> "));
+#define CONSOLE_OUTPUT_STREAM Serial
+void consolePrint(uint8_t s, console_cell_t x) {
+	switch (s) {
+		case CONSOLE_PRINT_NEWLINE:		CONSOLE_OUTPUT_STREAM.print(F("\r\n")); (void)x; break;
+		case CONSOLE_PRINT_SIGNED:		CONSOLE_OUTPUT_STREAM.print(x, DEC); CONSOLE_OUTPUT_STREAM.print(' '); break;
+		case CONSOLE_PRINT_UNSIGNED:	CONSOLE_OUTPUT_STREAM.print('+'); CONSOLE_OUTPUT_STREAM.print((console_ucell_t)x, DEC); CONSOLE_OUTPUT_STREAM.print(' '); break;
+		case CONSOLE_PRINT_HEX:			CONSOLE_OUTPUT_STREAM.print('$'); {
+											console_ucell_t m = 0xf;
+											do {
+												if ((console_ucell_t)x <= m) CONSOLE_OUTPUT_STREAM.print(0);
+												m = (m << 4) | 0xf;
+											} while (CONSOLE_UCELL_MAX != m);
+										} CONSOLE_OUTPUT_STREAM.print((console_ucell_t)x, HEX); CONSOLE_OUTPUT_STREAM.print(' '); break;
+		case CONSOLE_PRINT_STR:			CONSOLE_OUTPUT_STREAM.print((const char*)x); CONSOLE_OUTPUT_STREAM.print(' '); break;
+		case CONSOLE_PRINT_STR_P:		CONSOLE_OUTPUT_STREAM.print((const __FlashStringHelper*)x); CONSOLE_OUTPUT_STREAM.print(' '); break;
+		default:						/* ignore */; break;
+	}
 }
-static void print_console_seperator() {
-	Serial.print(F(" -> "));	
-}
+
+static void print_console_prompt() { consolePrint(CONSOLE_PRINT_NEWLINE, 0); consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(">"));}
+static void print_console_seperator() {	 consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(" -> ")); }
 
 void setup() {
 	Serial.begin(115200);
 	pinMode(13, OUTPUT);										// We will drive the LED.
 	
 	// Signon message.
-	Serial.println();
-	Serial.print(F("Arduino Console Example"));
+	consolePrint(CONSOLE_PRINT_NEWLINE, 0); 
+	consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("Arduino Console Example"));
 	
-	consoleInit(&Serial);										// Setup console to write to default serial port.
+	consoleInit();												// Setup console.
 	print_console_prompt();										// Start off with a prompt.
 }
 
@@ -31,20 +45,20 @@ void loop() {
 		const char c = Serial.read();
 		console_rc_t rc = consoleAccept(c);						// Add it to the input buffer.
 		if (CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW == rc) {		// Check for overflow...
-			Serial.print(consoleAcceptBuffer());				// Echo input line back to terminal. 
+			consolePrint(CONSOLE_PRINT_STR, (console_cell_t)consoleAcceptBuffer());				// Echo input line back to terminal. 
 			print_console_seperator();		
-			Serial.print(F("Input buffer overflow."));
+			consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("Input buffer overflow."));
 			print_console_prompt();
 		}
 		else if (CONSOLE_RC_OK == rc) {						// Check for a newline...
-			Serial.print(consoleAcceptBuffer());				// Echo input line back to terminal. 
+			consolePrint(CONSOLE_PRINT_STR, (console_cell_t)consoleAcceptBuffer());				// Echo input line back to terminal. 
 			print_console_seperator();							// Print separator before output.
 			rc = consoleProcess(consoleAcceptBuffer());			// Process input string from input buffer filled by accept and record error code. 
 			if (CONSOLE_RC_OK != rc) {						// If all went well then we get an OK status code
-				Serial.print(F("Error: "));						// Print error code:(
-				Serial.print((const __FlashStringHelper *)consoleGetErrorDescription(rc));	// Print description.
-				Serial.print(F(": "));
-				Serial.print(rc);
+				consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("Error: "));						// Print error code:(
+				consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)consoleGetErrorDescription(rc));	// Print description.
+				consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(": "));
+				consolePrint(CONSOLE_PRINT_SIGNED, (console_cell_t)PSTR(rc);
 			}
 			print_console_prompt();								// In any case print a newline and prompt ready for the next line of input. 
 		}
