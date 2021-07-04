@@ -55,12 +55,12 @@ static void u_push(console_cell_t x) 		{ verifyCanPush(1); *--f_ctx.sp = x; }
 static void clear_stack()					{ f_ctx.sp = STACKBASE; }
 
 /* Some helper macros for commands. */
-#define binop(op_) 	{ const console_cell_t rhs = u_pop(); console_cell_t* tos = u_tos(); *tos = *tos op_ rhs; } 	// Implement a binary operator.
-#define unop(op_)  	{ console_cell_t* tos = u_tos(); *tos = op_ *tos; }											// Implement a unary operator.
+#define binop(op_) 	{ const console_cell_t rhs = u_pop(); *u_tos() = *u_tos() op_ rhs; } 	// Implement a binary operator.
+#define unop(op_)  	{ *u_tos() = op_ *u_tos(); }											// Implement a unary operator.
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
-// All characters are hashed even non-printable ones.
+// All characters in the string are hashed even non-printable ones.
 #define HASH_START (5381)
 #define HASH_MULT (33)
 uint16_t hash(const char* str) {
@@ -74,8 +74,8 @@ uint16_t hash(const char* str) {
 	return h;
 }	 
 
-// Convert a single character in range [0-9a-zA-Z] to a number up to 25. A negative value is returned on error. 
-static int8_t convert_digit(char c) {
+// Convert a single character in range [0-9a-zA-Z] to a number up to 25. A large value (255) is returned on error. 
+static uint8_t convert_digit(char c) {
 	if ((c >= '0') && (c <= '9')) 
 		return (int8_t)c - '0';
 	else if ((c >= 'a') && (c <= 'z')) 
@@ -83,7 +83,7 @@ static int8_t convert_digit(char c) {
 	else if ((c >= 'A') && (c <= 'Z')) 
 		return (int8_t)c -'A' + 10;
 	else 
-		return -1;
+		return 255;
 }
 
 // Convert an unsigned number of any base up to 36. Return true on success.
@@ -282,10 +282,12 @@ console_rc_t consoleProcess(char* str) {
 			str += 1;								// Advance to next char.
 		}
 		
-		// Execute parsed command and exit on any abort, but return no error for a comment.
+		/* Execute parsed command and exit on any abort, so that we do not exwcute any more commands.
+			Note that no error is returned for any negative eror codes, which is used to implement comments with the 
+			CONSOLE_RC_SIGNAL_IGNORE_TO_EOL code. */
 		const console_rc_t command_rc = execute(cmd);
 		if (CONSOLE_RC_OK != command_rc) 
-			return (CONSOLE_RC_SIGNAL_IGNORE_TO_EOL == command_rc) ? CONSOLE_RC_OK : command_rc;
+			return (command_rc < CONSOLE_RC_OK) ? CONSOLE_RC_OK : command_rc;
 		
 		// If last command break out of loop.
 		if (at_end)
