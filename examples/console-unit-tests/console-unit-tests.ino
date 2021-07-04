@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 
 #include "console.h"
@@ -74,14 +75,14 @@ int tests_run, tests_fail;
 #define mu_assert_equal(val_, expected_) mu_assert(mkstr(val_) "!=" mkstr(expected_), (val_) != (expected_))
 
 #define mu_assert_equal_str(val_, expected_) if (0 != strcmp((val_), (expected_))) { tests_fail++; return mk_msg("%s != %s; expected `%s', got `%s'", mkstr(val_), mkstr(expected_), expected_, val_); }
-#define mu_assert_equal_int(val_, expected_) if ((val_) != (expected_))            { tests_fail++; return mk_msg("%s != %s; expected `%d', got `%d'", mkstr(val_), mkstr(expected_), expected_, val_); }
+#define mu_assert_equal_int(val_, expected_) if ((int)(val_) != (int)(expected_))  { tests_fail++; return mk_msg("%s != %s; expected `%d', got `%d'", mkstr(val_), mkstr(expected_), expected_, val_); }
 
-char* check_console(const char* input, const char* output, uint8_t rc_expected, int8_t depth_expected, ...) {
+char* check_console(const char* input, const char* output, console_rc_t rc_expected, int8_t depth_expected, ...) {
 	char inbuf[32];								// Copy input string as we are not measnt to write to string literals.
 	strcpy(inbuf, input);
 	o_str = "";									// Clear output string of contents from previous test.. 
 	consoleReset();								// Clear stack. 
-	uint8_t rc = consoleProcess(inbuf);			// Process input string.
+	console_rc_t rc = consoleProcess(inbuf);			// Process input string.
 	mu_assert_equal_int(rc, rc_expected);		// Verify return code...
 	mu_assert_equal_str(output, o_str.c_str());	// Verify output string...
 	
@@ -102,7 +103,7 @@ char* check_console(const char* input, const char* output, uint8_t rc_expected, 
 
 char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected) {
 	consoleAcceptClear();
-	uint8_t rc;
+	console_rc_t rc;
 	
 	// Checks will accept up to CONSOLE_INPUT_BUFFER_SIZE chars.
 	char chk[100];
@@ -123,7 +124,8 @@ char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected
 }
 
 // Since I had a Pro Mini handy all tests won't fit in the memory, so they have to be tested in batches.
-#define TEST_BATCH 2 
+// If you have a bigger processor such as an ArduinoMega then you can do the lot. 
+#define TEST_BATCH 0 
 void loop() {
 	mu_init();
 #if (TEST_BATCH == 0) || (TEST_BATCH == 1)
@@ -134,12 +136,13 @@ void loop() {
 	mu_run_test(check_console("foo", "",					CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
 	
 	// Check decimal number parser.
-//	mu_run_test(check_console("+", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
-//	mu_run_test(check_console("-", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
+	mu_run_test(check_console("+a", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// We could have this command if we wanted. It's just not a number.
+	mu_run_test(check_console("-f", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
 	mu_run_test(check_console("0", "",						CONSOLE_RC_OK,				1, 0));
 	mu_run_test(check_console("+0", "",						CONSOLE_RC_OK,				1, 0));
 	mu_run_test(check_console("1", "",						CONSOLE_RC_OK,				1, 1));
 	mu_run_test(check_console("32767", "",					CONSOLE_RC_OK,				1, 32767));
+	mu_run_test(check_console("32767a", "",					CONSOLE_RC_ERROR_UNKNOWN_COMMAND, 0));		// Flagged as unknown command, even though it's really a bad base. 
 	mu_run_test(check_console("-32768", "",					CONSOLE_RC_OK,				1, -32768));
 	mu_run_test(check_console("32768", "",					CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
 	mu_run_test(check_console("-32769", "",					CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
@@ -149,6 +152,7 @@ void loop() {
 #endif
 #if (TEST_BATCH == 0) || (TEST_BATCH == 2)
 	// Check hex number parser.
+	mu_run_test(check_console("$g", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// We could have this command if we wanted. It's just not a number.
 	mu_run_test(check_console("$", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
 	mu_run_test(check_console("$1", "",						CONSOLE_RC_OK,				1, 1));
 	mu_run_test(check_console("$FFFF", "",					CONSOLE_RC_OK,				1, 0xffff));
@@ -156,11 +160,11 @@ void loop() {
 	
 	// Check string parser & string printer.
 	mu_run_test(check_console(".\"", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	mu_run_test(check_console("\" .\"", " ",				CONSOLE_RC_OK,				0));
-	mu_run_test(check_console("\"\\\\ .\"", "\\ ",			CONSOLE_RC_OK,				0));
+	mu_run_test(check_console("\" .\"", " ",				CONSOLE_RC_OK,				0));			// Zero length string.
+	mu_run_test(check_console("\"\\\\ .\"", "\\ ",			CONSOLE_RC_OK,				0));			// Single backslash.
 	mu_run_test(check_console("\"q .\"", "q ",				CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("\"q\\n\\r\\ .\"", "q\n\r  ",	CONSOLE_RC_OK,				0));
-	mu_run_test(check_console("\"\\1f .\"", "\x1f ",		CONSOLE_RC_OK,				0));
+	mu_run_test(check_console("\"\\1f .\"", "\x1f ",		CONSOLE_RC_OK,				0));			// Single character in hex `1f'. 
 #endif
 #if (TEST_BATCH == 0) || (TEST_BATCH == 3)
 	// Number printing.
@@ -182,7 +186,7 @@ void loop() {
 
 	// Stack over/under flow.
 	mu_run_test(check_console("DROP", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	mu_run_test(check_console("1 2 3 4 5 6 7 8 9 ", "",		CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	8, 1, 2, 3, 4, 5, 6, 7, 8));
+	mu_run_test(check_console("1 2 3 4 5 6 7 8 9 ", "",		CONSOLE_RC_ERROR_DSTACK_OVERFLOW,	8, 1, 2, 3, 4, 5, 6, 7, 8));
 #endif
 #if (TEST_BATCH == 0) || (TEST_BATCH == 4)
 	// Commands
