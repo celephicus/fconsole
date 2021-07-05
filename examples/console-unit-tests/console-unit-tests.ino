@@ -1,6 +1,6 @@
-
 #include <Arduino.h>
 
+// We are testing the console base library, which can be made to run on anything, so is a bit hairy to use. 
 #include "console.h"
 
 #include <Stream.h>
@@ -31,21 +31,20 @@ private:
 String o_str;
 StringStream o_stream(o_str);
 
-#define CONSOLE_OUTPUT_STREAM o_stream
+// Console output function. 
 void consolePrint(uint8_t s, console_cell_t x) {
 	switch (s) {
-		case CONSOLE_PRINT_NEWLINE:		CONSOLE_OUTPUT_STREAM.print(F("\r\n")); (void)x; break;
-		case CONSOLE_PRINT_SIGNED:		CONSOLE_OUTPUT_STREAM.print(x, DEC); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_UNSIGNED:	CONSOLE_OUTPUT_STREAM.print('+'); CONSOLE_OUTPUT_STREAM.print((console_ucell_t)x, DEC); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_HEX:			CONSOLE_OUTPUT_STREAM.print('$'); {
-											console_ucell_t m = 0xf;
-											do {
-												if ((console_ucell_t)x <= m) CONSOLE_OUTPUT_STREAM.print(0);
-												m = (m << 4) | 0xf;
-											} while (CONSOLE_UCELL_MAX != m);
-										} CONSOLE_OUTPUT_STREAM.print((console_ucell_t)x, HEX); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_STR:			CONSOLE_OUTPUT_STREAM.print((const char*)x); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_STR_P:		CONSOLE_OUTPUT_STREAM.print((const __FlashStringHelper*)x); CONSOLE_OUTPUT_STREAM.print(' '); break;
+		case CONSOLE_PRINT_NEWLINE:		o_stream.print(F("\r\n")); (void)x; break;
+		case CONSOLE_PRINT_SIGNED:		o_stream.print(x, DEC); o_stream.print(' '); break;
+		case CONSOLE_PRINT_UNSIGNED:	o_stream.print('+'); o_stream.print((console_ucell_t)x, DEC); o_stream.print(' '); break;
+		case CONSOLE_PRINT_HEX:			o_stream.print('$'); 
+										for (console_ucell_t m = 0xf; CONSOLE_UCELL_MAX != m; m = (m << 4) | 0xf) {
+											if ((console_ucell_t)x <= m) 
+												o_stream.print(0);
+										} 
+										o_stream.print((console_ucell_t)x, HEX); o_stream.print(' '); break;
+		case CONSOLE_PRINT_STR:			o_stream.print((const char*)x); o_stream.print(' '); break;
+		case CONSOLE_PRINT_STR_P:		o_stream.print((const __FlashStringHelper*)x); o_stream.print(' '); break;
 		default:						/* ignore */; break;
 	}
 }
@@ -178,6 +177,7 @@ void loop() {
 	mu_run_test(check_console("+65535 U.", "+65535 ",		CONSOLE_RC_OK,				0));
 		
 	mu_run_test(check_console("$.", "",						CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console("0 $.", "$0000 ",				CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("$000F $.", "$000F ",			CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("$00FF $.", "$00FF ",			CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("$0FFF $.", "$0FFF ",			CONSOLE_RC_OK,				0));

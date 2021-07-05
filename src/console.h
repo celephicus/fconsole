@@ -18,14 +18,15 @@ typedef uint16_t console_ucell_t;
 // Initialise. 
 void consoleInit();
 
-// Function to print on the output stream. You must supply this. An example is in a comment in console.cpp.
+// Function to print on the output stream. You must supply this. An example is in a comment in console.cpp. Unknown options are ignored.
+#define CONSOLE_OUTPUT_NEWLINE_STR "\r\n"
 enum {
-	CONSOLE_PRINT_NEWLINE,
-	CONSOLE_PRINT_SIGNED,
-	CONSOLE_PRINT_UNSIGNED,
-	CONSOLE_PRINT_HEX,
-	CONSOLE_PRINT_STR,
-	CONSOLE_PRINT_STR_P,
+	CONSOLE_PRINT_NEWLINE,		// Prints the newline string CONSOLE_OUTPUT_NEWLINE_STR, second arg ignored. 
+	CONSOLE_PRINT_SIGNED,		// Prints econd arg as a signed integer, e.g `-123 ', `0 ', `456 ', note trailing SPACE.
+	CONSOLE_PRINT_UNSIGNED,		// Print second arg as an unsigned integer, e.g `+0 ', `+123 ', note trailing SPACE.
+	CONSOLE_PRINT_HEX,			// Print second arg as a hex integer, e.g `$0000 ', `$abcd ', note trailing SPACE.
+	CONSOLE_PRINT_STR,			// Print second arg as pointer to string in RAM, with trailing space. 
+	CONSOLE_PRINT_STR_P,		// Print second arg as pointer to string in PROGMEM, with trailing space. 
 };
 void consolePrint(uint8_t s, console_cell_t x);
 

@@ -107,7 +107,7 @@ static bool convert_number(console_ucell_t* number, console_cell_t base, const c
 }  
 
 // Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return false if they cannot
-//  parse the input string. If they do parse it, they might call error if they cannot push a value onto the stack.
+//  parse the input string. If they do parse it, they might call raise() if they cannot push a value onto the stack.
 typedef bool (*console_recogniser)(char* cmd);
 
 /* Recogniser for signed/unsigned decimal number.
@@ -208,11 +208,11 @@ exit:	*wp = '\0';						// Terminate string in input buffer.
 #if 0
 console_print(uint8_t s, console_cell_t x) {
 	switch (s) {
-		case CONSOLE_PRINT_NEWLINE:		printf("\r\n")); (void)x; break;
+		case CONSOLE_PRINT_NEWLINE:		printf(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; break;
 		case CONSOLE_PRINT_SIGNED:		printf("%d ", x); break;
 		case CONSOLE_PRINT_UNSIGNED:	printf("+%u ", (console_ucell_t)x); break;
 		case CONSOLE_PRINT_HEX:			printf("$%4x ", (console_ucell_t)x); break;
-		case CONSOLE_PRINT_STR:			 fall through... */
+		case CONSOLE_PRINT_STR:			/* fall through... */
 		case CONSOLE_PRINT_STR_P:		printf("%s ", (const char*)x); break;
 		default:						/* ignore */; break;
 	}
@@ -230,8 +230,8 @@ static uint8_t execute(char* cmd) {
 		console_r_number_decimal,		
 		console_r_number_hex,			
 		console_r_string,				
-		console_cmds_builtin,		
-		console_cmds_user,		
+		console_cmds_builtin,		// From "console-cmds-builtin.h"
+		console_cmds_user,			// From "console-cmds-user.h"
 	};
 
 	// Establish a point where raise will go to when raise() is called.
