@@ -3,9 +3,26 @@
 // We are testing the console base library, which can be made to run on anything, so is a bit hairy to use. 
 #include "console.h"
 
+// And the console print function in Fconsole.
+#include "Fconsole.h"
+
 #include <Stream.h>
 #include <stdarg.h>
 #include <stdio.h>
+
+// Need this header for user commands.
+#include "console-internals.h"
+bool console_cmds_user(char* cmd) {
+	switch (console_hash(cmd)) {
+		case /** + **/ 0xb58e: console_binop(+); break;
+		case /** - **/ 0xb588: console_binop(-); break;
+		case /** NEGATE **/ 0x7a79: console_unop(-); break;
+		case /** # **/ 0xb586: console_raise(CONSOLE_RC_SIGNAL_IGNORE_TO_EOL); break;
+		case /** LED **/ 0xdc88: digitalWrite(13, !!console_u_pop()); break;
+		default: return false;
+	}
+	return true;
+}
 
 // Copied from the StringStream Arduino library.
 class StringStream : public Stream
@@ -31,25 +48,9 @@ private:
 String o_str;
 StringStream o_stream(o_str);
 
-// Console output function. 
-void consolePrint(uint8_t s, console_cell_t x) {
-	switch (s) {
-		case CONSOLE_PRINT_NEWLINE:		o_stream.print(F("\r\n")); (void)x; break;
-		case CONSOLE_PRINT_SIGNED:		o_stream.print(x, DEC); o_stream.print(' '); break;
-		case CONSOLE_PRINT_UNSIGNED:	o_stream.print('+'); o_stream.print((console_ucell_t)x, DEC); o_stream.print(' '); break;
-		case CONSOLE_PRINT_HEX:			o_stream.print('$'); 
-										for (console_ucell_t m = 0xf; CONSOLE_UCELL_MAX != m; m = (m << 4) | 0xf) {
-											if ((console_ucell_t)x <= m) 
-												o_stream.print(0);
-										} 
-										o_stream.print((console_ucell_t)x, HEX); o_stream.print(' '); break;
-		case CONSOLE_PRINT_STR:			o_stream.print((const char*)x); o_stream.print(' '); break;
-		case CONSOLE_PRINT_STR_P:		o_stream.print((const __FlashStringHelper*)x); o_stream.print(' '); break;
-		default:						/* ignore */; break;
-	}
-}
-
 void setup() {
+	FConsole.begin(o_stream);	// Use StringStream object for console print function. 
+
 	Serial.begin(115200);
 	Serial.println();
 	Serial.println(F("Arduino Console Unit Tests"));
@@ -76,8 +77,15 @@ int tests_run, tests_fail;
 #define mu_assert_equal_str(val_, expected_) if (0 != strcmp((val_), (expected_))) { tests_fail++; return mk_msg("%s != %s; expected `%s', got `%s'", mkstr(val_), mkstr(expected_), expected_, val_); }
 #define mu_assert_equal_int(val_, expected_) if ((int)(val_) != (int)(expected_))  { tests_fail++; return mk_msg("%s != %s; expected `%d', got `%d'", mkstr(val_), mkstr(expected_), expected_, val_); }
 
+char* check_print(uint8_t pr, console_cell_t x, const char* output) {
+	o_str = "";									// Clear output string of contents from previous test.. 
+	consolePrint(pr, x);
+	mu_assert_equal_str(output, o_str.c_str());	// Verify output string...
+	return NULL;
+}
+
 char* check_console(const char* input, const char* output, console_rc_t rc_expected, int8_t depth_expected, ...) {
-	char inbuf[32];								// Copy input string as we are not measnt to write to string literals.
+	char inbuf[32];								// Copy input string as we are not meant to write to string literals.
 	strcpy(inbuf, input);
 	o_str = "";									// Clear output string of contents from previous test.. 
 	consoleReset();								// Clear stack. 
@@ -128,7 +136,20 @@ char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected
 void loop() {
 	mu_init();
 #if (TEST_BATCH == 0) || (TEST_BATCH == 1)
-	// Command parsing
+	// Print routine.
+	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE, 1235, CONSOLE_OUTPUT_NEWLINE_STR));
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 0, "0 "));
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 32767, "32767 "));
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, -32768, "-32768 "));
+	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 0, "+0 "));
+	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 0xffff, "+65535 "));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX, 0xffff, "$FFFF "));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX, 0, "$0000 "));
+	mu_run_test(check_print(CONSOLE_PRINT_STR, (console_cell_t)"hello", "hello "));
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("hello"), "hello "));
+
+#endif
+#if (TEST_BATCH == 0) || (TEST_BATCH == 2)	// Command parsing
 	mu_run_test(check_console("", "",						CONSOLE_RC_OK,				0));
 	mu_run_test(check_console(" ", "",						CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("\t", "",						CONSOLE_RC_OK,				0));
@@ -149,7 +170,7 @@ void loop() {
 	mu_run_test(check_console("+65535", "",					CONSOLE_RC_OK,				1, 65535));
 	mu_run_test(check_console("+65536", "",					CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
 #endif
-#if (TEST_BATCH == 0) || (TEST_BATCH == 2)
+#if (TEST_BATCH == 0) || (TEST_BATCH == 3)
 	// Check hex number parser.
 	mu_run_test(check_console("$g", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// We could have this command if we wanted. It's just not a number.
 	mu_run_test(check_console("$", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
@@ -165,7 +186,7 @@ void loop() {
 	mu_run_test(check_console("\"q\\n\\r\\ .\"", "q\n\r  ",	CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("\"\\1f .\"", "\x1f ",		CONSOLE_RC_OK,				0));			// Single character in hex `1f'. 
 #endif
-#if (TEST_BATCH == 0) || (TEST_BATCH == 3)
+#if (TEST_BATCH == 0) || (TEST_BATCH == 4)
 	// Number printing.
 	mu_run_test(check_console(".", "",						CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
 	mu_run_test(check_console("0 .", "0 ",					CONSOLE_RC_OK,				0));
@@ -188,7 +209,7 @@ void loop() {
 	mu_run_test(check_console("DROP", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
 	mu_run_test(check_console("1 2 3 4 5 6 7 8 9 ", "",		CONSOLE_RC_ERROR_DSTACK_OVERFLOW,	8, 1, 2, 3, 4, 5, 6, 7, 8));
 #endif
-#if (TEST_BATCH == 0) || (TEST_BATCH == 4)
+#if (TEST_BATCH == 0) || (TEST_BATCH == 5)
 	// Commands
 	mu_run_test(check_console("1 2 DROP", "",				CONSOLE_RC_OK,				1, 1));
 	mu_run_test(check_console("1 2 drop", "",				CONSOLE_RC_OK,				1, 1));
@@ -209,7 +230,7 @@ void loop() {
 	// Comments
 	mu_run_test(check_console("1 2 # 3 4", "",				CONSOLE_RC_OK,				2, 1, 2));
 #endif
-#if (TEST_BATCH == 0) || (TEST_BATCH == 5)
+#if (TEST_BATCH == 0) || (TEST_BATCH == 6)
 	// Test Accept
 	mu_run_test(check_accept(0,								0,								CONSOLE_RC_OK));
 	mu_run_test(check_accept(1,								1,								CONSOLE_RC_OK));

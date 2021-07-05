@@ -15,10 +15,10 @@ extern console_context_t g_console_ctx;
 void console_raise(console_rc_t rc);
 
 // Stack fills from top down.
-#define STACKBASE (&g_console_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
+#define CONSOLE_STACKBASE (&g_console_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
 
 // Predicates for push & pop.
-#define console_can_pop(n_) (g_console_ctx.sp < (STACKBASE - (n_) + 1))
+#define console_can_pop(n_) (g_console_ctx.sp < (CONSOLE_STACKBASE - (n_) + 1))
 #define console_can_push(n_) (g_console_ctx.sp >= &g_console_ctx.dstack[0 + (n_)])
 
 // Error handling in commands.
@@ -26,17 +26,17 @@ void console_verify_can_pop(uint8_t n);
 void console_verify_can_push(uint8_t n);
 
 // Stack primitives.
-console_cell_t u_pick(uint8_t i);
-console_cell_t* u_tos();
-console_cell_t* u_nos();
-console_cell_t u_depth();
-console_cell_t u_pop();
-void u_push(console_cell_t x);
-void clear_stack();
+console_cell_t console_u_pick(uint8_t i);
+console_cell_t* console_u_tos();
+console_cell_t* console_u_nos();
+console_cell_t console_u_depth();
+console_cell_t console_u_pop();
+void console_u_push(console_cell_t x);
+void console_u_clear();
 
 /* Some helper macros for commands. */
-#define console_binop(op_)	{ const console_cell_t rhs = u_pop(); *u_tos() = *u_tos() op_ rhs; } 	// Implement a binary operator.
-#define console_unop(op_)	{ *u_tos() = op_ *u_tos(); }											// Implement a unary operator.
+#define console_binop(op_)	{ const console_cell_t rhs = console_u_pop(); *console_u_tos() = *console_u_tos() op_ rhs; } 	// Implement a binary operator.
+#define console_unop(op_)	{ *console_u_tos() = op_ *console_u_tos(); }											// Implement a unary operator.
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.

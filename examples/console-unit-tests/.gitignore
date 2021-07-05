@@ -1,9 +1,0 @@
-# Ignore all files since I copy the contents of `src' here for testing, rather than going through the rigmarole of installing it as an Arduino lib.
-*
-
-# But specifically include the Arduino sketch file. And the user commands file since this is edited.
-!*.ino
-!.gitignore
-!console-cmds-user.h
-
-

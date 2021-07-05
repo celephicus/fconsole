@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <setjmp.h>
 
 #include "console.h"
 #include "console-internals.h"
@@ -27,25 +26,18 @@ void console_raise(console_rc_t rc) {
 	longjmp(g_console_ctx.jmpbuf, rc);
 }
 
-// Stack fills from top down.
-#define STACKBASE (&g_console_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
-
-// Predicates for push & pop.
-#define console_can_pop(n_) (g_console_ctx.sp < (STACKBASE - (n_) + 1))	
-#define console_can_push(n_) (g_console_ctx.sp >= &g_console_ctx.dstack[0 + (n_)])
-
 // Error handling in commands.
 void console_verify_can_pop(uint8_t n) { if (!console_can_pop(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); }
 void console_verify_can_push(uint8_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
 
 // Stack primitives.
-console_cell_t u_pick(uint8_t i) 	{ return g_console_ctx.sp[i]; }
-console_cell_t* u_tos() 				{ console_verify_can_pop(1); return g_console_ctx.sp; }
-console_cell_t* u_nos() 				{ console_verify_can_pop(2); return g_console_ctx.sp + 1; }
-console_cell_t u_depth() 			{ return (STACKBASE - g_console_ctx.sp); } 
-console_cell_t u_pop() 				{ console_verify_can_pop(1); return *(g_console_ctx.sp++); }
-void u_push(console_cell_t x) 		{ console_verify_can_push(1); *--g_console_ctx.sp = x; }
-void clear_stack()					{ g_console_ctx.sp = STACKBASE; }
+console_cell_t console_u_pick(uint8_t i) 	{ return g_console_ctx.sp[i]; }
+console_cell_t* console_u_tos() 				{ console_verify_can_pop(1); return g_console_ctx.sp; }
+console_cell_t* console_u_nos() 				{ console_verify_can_pop(2); return g_console_ctx.sp + 1; }
+console_cell_t console_u_depth() 			{ return (CONSOLE_STACKBASE - g_console_ctx.sp); } 
+console_cell_t console_u_pop() 				{ console_verify_can_pop(1); return *(g_console_ctx.sp++); }
+void console_u_push(console_cell_t x) 		{ console_verify_can_push(1); *--g_console_ctx.sp = x; }
+void console_u_clear()					{ g_console_ctx.sp = CONSOLE_STACKBASE; }
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
@@ -137,7 +129,7 @@ static bool console_r_number_decimal(char* cmd) {
 	}
 
 	// Success.
-	u_push(result);
+	console_u_push(result);
 	return true;
 }
 
@@ -151,7 +143,7 @@ static bool console_r_number_hex(char* cmd) {
 		return false;
 	
 	// Success.
-	u_push(result);
+	console_u_push(result);
 	return true;
 }
 
@@ -189,7 +181,7 @@ static bool console_r_string(char* cmd) {
 		rp += 1;
 	}
 exit:	*wp = '\0';						// Terminate string in input buffer. 
-	u_push((console_cell_t)&cmd[0]);   	// Push address we started writing at.
+	console_u_push((console_cell_t)&cmd[0]);   	// Push address we started writing at.
 	return true;
 }
 
@@ -212,7 +204,7 @@ static bool console_r_hex_string(char* cmd) {
 		*out_ptr++ = (digit_1 << 4) | digit_2;
 	}
 	*len = out_ptr - len - 1; 		// Store length, looks odd, using len as a pointer and a value.
-	u_push((console_cell_t)len);	// Push _address_.
+	console_u_push((console_cell_t)len);	// Push _address_.
 	return true;
 }
 
@@ -267,7 +259,7 @@ static bool is_whitespace(char c) {
 // External functions.
 
 void consoleInit() {
-	clear_stack();
+	console_u_clear();
 }
 
 console_rc_t consoleProcess(char* str) {
@@ -345,7 +337,7 @@ console_rc_t consoleAccept(char c) {
 char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
 
 // Test functions 
-uint8_t consoleStackDepth() { return u_depth(); }
-console_cell_t consoleStackPick(uint8_t i) { return u_pick(i); }
-void consoleReset() { clear_stack(); }
+uint8_t consoleStackDepth() { return console_u_depth(); }
+console_cell_t consoleStackPick(uint8_t i) { return console_u_pick(i); }
+void consoleReset() { console_u_clear(); }
 //uint8_t consoleAcceptBufferLen() { return f_accept_context.inbidx; }

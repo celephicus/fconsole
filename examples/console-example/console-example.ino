@@ -11,7 +11,7 @@ bool console_cmds_user(char* cmd) {
 		case /** - **/ 0xb588: console_binop(-); break;
 		case /** NEGATE **/ 0x7a79: console_unop(-); break;
 		case /** # **/ 0xb586: console_raise(CONSOLE_RC_SIGNAL_IGNORE_TO_EOL); break;
-		case /** LED **/ 0xdc88: digitalWrite(13, !!u_pop()); break;
+		case /** LED **/ 0xdc88: digitalWrite(LED_BUILTIN, !!console_u_pop()); break;
 		default: return false;
 	}
 	return true;
