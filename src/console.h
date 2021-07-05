@@ -30,6 +30,9 @@ enum {
 };
 void consolePrint(uint8_t s, console_cell_t x);
 
+// User recogniser hook, define your own commands here.
+bool console_cmds_user(char* cmd);
+
 // Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative values are more like status codes that do not indicate an error.
 enum {
 	CONSOLE_RC_OK =								0,	// Returned by consoleProcess() for no errors and by consoleAccept() if a newline was read with no overflow.

@@ -5,6 +5,7 @@
 #include <setjmp.h>
 
 #include "console.h"
+#include "console-internals.h"
 
 // How many elements in an array?
 #define ELEMENT_COUNT(x_) (sizeof(x_) / sizeof((x_)[0]))
@@ -12,13 +13,7 @@
 // Unused static functions are OK. The linker will remove them.
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-// Struct to hold the console interpreter's state.
-typedef struct {
-	console_cell_t dstack[CONSOLE_DATA_STACK_SIZE];
-	console_cell_t* sp;
-	jmp_buf jmpbuf;				// How we do aborts.
-} console_context_t;	
-static console_context_t f_ctx;			// Only one instance of the console interpreter. 
+console_context_t g_console_ctx;	
 
 // State for consoleAccept(). Done seperately as if not used the linker will remove it.
 typedef struct {
@@ -27,43 +22,37 @@ typedef struct {
 } accept_context_t;
 static accept_context_t f_accept_context;
 
-// Helpers for commands.
-
 // Call on error, thanks to the magic of longjmp() it will return to the last setjmp with the error code.
-static void raise(console_rc_t rc) {
-	longjmp(f_ctx.jmpbuf, rc);
+void console_raise(console_rc_t rc) {
+	longjmp(g_console_ctx.jmpbuf, rc);
 }
 
 // Stack fills from top down.
-#define STACKBASE (&f_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
+#define STACKBASE (&g_console_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
 
 // Predicates for push & pop.
-#define canPop(n_) (f_ctx.sp < (STACKBASE - (n_) + 1))	
-#define canPush(n_) (f_ctx.sp >= &f_ctx.dstack[0 + (n_)])
+#define console_can_pop(n_) (g_console_ctx.sp < (STACKBASE - (n_) + 1))	
+#define console_can_push(n_) (g_console_ctx.sp >= &g_console_ctx.dstack[0 + (n_)])
 
 // Error handling in commands.
-static void verifyCanPop(uint8_t n) { if (!canPop(n)) raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); }
-static void verifyCanPush(uint8_t n) { if (!canPush(n)) raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
+void console_verify_can_pop(uint8_t n) { if (!console_can_pop(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); }
+void console_verify_can_push(uint8_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
 
 // Stack primitives.
-static console_cell_t u_pick(uint8_t i) 	{ return f_ctx.sp[i]; }
-static console_cell_t* u_tos() 				{ verifyCanPop(1); return f_ctx.sp; }
-static console_cell_t* u_nos() 				{ verifyCanPop(2); return f_ctx.sp + 1; }
-static console_cell_t u_depth() 			{ return (STACKBASE - f_ctx.sp); } 
-static console_cell_t u_pop() 				{ verifyCanPop(1); return *(f_ctx.sp++); }
-static void u_push(console_cell_t x) 		{ verifyCanPush(1); *--f_ctx.sp = x; }
-static void clear_stack()					{ f_ctx.sp = STACKBASE; }
-
-/* Some helper macros for commands. */
-#define binop(op_) 	{ const console_cell_t rhs = u_pop(); *u_tos() = *u_tos() op_ rhs; } 	// Implement a binary operator.
-#define unop(op_)  	{ *u_tos() = op_ *u_tos(); }											// Implement a unary operator.
+console_cell_t u_pick(uint8_t i) 	{ return g_console_ctx.sp[i]; }
+console_cell_t* u_tos() 				{ console_verify_can_pop(1); return g_console_ctx.sp; }
+console_cell_t* u_nos() 				{ console_verify_can_pop(2); return g_console_ctx.sp + 1; }
+console_cell_t u_depth() 			{ return (STACKBASE - g_console_ctx.sp); } 
+console_cell_t u_pop() 				{ console_verify_can_pop(1); return *(g_console_ctx.sp++); }
+void u_push(console_cell_t x) 		{ console_verify_can_push(1); *--g_console_ctx.sp = x; }
+void clear_stack()					{ g_console_ctx.sp = STACKBASE; }
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
 // All characters in the string are hashed even non-printable ones.
 #define HASH_START (5381)
 #define HASH_MULT (33)
-uint16_t hash(const char* str) {
+uint16_t console_hash(const char* str) {
 	uint16_t h = HASH_START;
 	char c;
 	while ('\0' != (c = *str++)) {
@@ -100,7 +89,7 @@ static bool convert_number(console_ucell_t* number, console_cell_t base, const c
 		const console_ucell_t old_number = *number;
 		*number = *number * base + digit;
 		if (old_number > *number)		// Magnitude change signals overflow.
-			raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
+			console_raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
 	}
 	
 	return true;		// If we get here then it must have worked. 
@@ -138,11 +127,11 @@ static bool console_r_number_decimal(char* cmd) {
 		break;
 	case ' ':		/* Signed positive number. */
 		if (result > (console_ucell_t)CONSOLE_CELL_MAX)
-			raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
+			console_raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
 		break;
 	case '-':		/* Signed negative number. */
 		if (result > ((console_ucell_t)CONSOLE_CELL_MIN))
-			raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
+			console_raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
 		result = (console_ucell_t)-(console_cell_t)result;
 		break;
 	}
@@ -185,7 +174,7 @@ static bool console_r_string(char* cmd) {
 				case '\0': *wp++ = ' '; goto exit;	// Trailing '\' is a space, so exit loop now. 
 				default: 							// Might be a hex character escape.
 				{
-					const uint8_t digit_1 = convert_digit(rp[0]);
+					const uint8_t digit_1 = convert_digit(rp[0]); // A bit naughty, we might read beyond the end of the buffer
 					const uint8_t digit_2 = convert_digit(rp[1]);
 					if ((digit_1 < 16) && (digit_2 < 16)) {		// If a valid hex char...
 						*wp++ = (digit_1 << 4) | digit_2;
@@ -201,6 +190,29 @@ static bool console_r_string(char* cmd) {
 	}
 exit:	*wp = '\0';						// Terminate string in input buffer. 
 	u_push((console_cell_t)&cmd[0]);   	// Push address we started writing at.
+	return true;
+}
+
+// Hex string with a leading '&', then n pairs of hex digits, pushes address of length of string, then binary data.
+// So `&1aff01' will push a pointer to memory 03 1a ff 01.
+static bool console_r_hex_string(char* cmd) {
+	unsigned char* len = (unsigned char*)cmd; // Leave space for length of counted string.
+	if ('&' != *cmd++) 
+		return false;
+
+	unsigned char* out_ptr = (unsigned char*)cmd; // We write the converted number back into the input buffer.
+	while ('\0' != *cmd) { 
+		const uint8_t digit_1 = convert_digit(*cmd++);
+		if (digit_1 >= 16)
+			return false;
+		
+		const uint8_t digit_2 = convert_digit(*cmd++);
+		if (digit_2 >= 16)
+			return false;
+		*out_ptr++ = (digit_1 << 4) | digit_2;
+	}
+	*len = out_ptr - len - 1; 		// Store length, looks odd, using len as a pointer and a value.
+	u_push((console_cell_t)len);	// Push _address_.
 	return true;
 }
 
@@ -220,7 +232,6 @@ console_print(uint8_t s, console_cell_t x) {
 #endif
 
 #include "console-cmds-builtin.h"
-#include "console-cmds-user.h"
 
 // Execute a single command from a string
 static uint8_t execute(char* cmd) { 
@@ -230,12 +241,13 @@ static uint8_t execute(char* cmd) {
 		console_r_number_decimal,		
 		console_r_number_hex,			
 		console_r_string,				
+		console_r_hex_string,
+		console_cmds_user,			// User defined function. 
 		console_cmds_builtin,		// From "console-cmds-builtin.h"
-		console_cmds_user,			// From "console-cmds-user.h"
 	};
 
 	// Establish a point where raise will go to when raise() is called.
-	console_rc_t command_rc = setjmp(f_ctx.jmpbuf); // When called in normal execution it returns zero. 
+	console_rc_t command_rc = setjmp(g_console_ctx.jmpbuf); // When called in normal execution it returns zero. 
 	if (CONSOLE_RC_OK != command_rc)
 		return command_rc;
 	
