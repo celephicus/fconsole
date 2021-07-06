@@ -31,13 +31,13 @@ void console_verify_can_pop(uint8_t n) { if (!console_can_pop(n)) console_raise(
 void console_verify_can_push(uint8_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
 
 // Stack primitives.
-console_cell_t console_u_pick(uint8_t i) 	{ return g_console_ctx.sp[i]; }
-console_cell_t* console_u_tos() 				{ console_verify_can_pop(1); return g_console_ctx.sp; }
-console_cell_t* console_u_nos() 				{ console_verify_can_pop(2); return g_console_ctx.sp + 1; }
+console_cell_t console_u_pick(uint8_t i)	{ return g_console_ctx.sp[i]; }
+console_cell_t& console_u_tos() 			{ console_verify_can_pop(1); return *g_console_ctx.sp; }
+console_cell_t& console_u_nos() 			{ console_verify_can_pop(2); return *(g_console_ctx.sp + 1); }
 console_cell_t console_u_depth() 			{ return (CONSOLE_STACKBASE - g_console_ctx.sp); } 
 console_cell_t console_u_pop() 				{ console_verify_can_pop(1); return *(g_console_ctx.sp++); }
 void console_u_push(console_cell_t x) 		{ console_verify_can_push(1); *--g_console_ctx.sp = x; }
-void console_u_clear()					{ g_console_ctx.sp = CONSOLE_STACKBASE; }
+void console_u_clear()						{ g_console_ctx.sp = CONSOLE_STACKBASE; }
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
@@ -48,7 +48,7 @@ uint16_t console_hash(const char* str) {
 	uint16_t h = HASH_START;
 	char c;
 	while ('\0' != (c = *str++)) {
-		if ((c >= 'a') && (c <= 'z')) 
+		if ((c >= 'a') && (c <= 'z')) 	// Normalise letter case to UPPER CASE. 
 			c -= 'a' - 'A';
 		h = (h * HASH_MULT) ^ (uint16_t)c;
 	}
@@ -87,18 +87,11 @@ static bool convert_number(console_ucell_t* number, console_cell_t base, const c
 	return true;		// If we get here then it must have worked. 
 }  
 
-// Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return false if they cannot
-//  parse the input string. If they do parse it, they might call raise() if they cannot push a value onto the stack.
-typedef bool (*console_recogniser)(char* cmd);
+// Recognisers
+//
 
-/* Recogniser for signed/unsigned decimal number.
-	The number format is as follows:
-		An initial '-' flags the number as negative, the '-' character is illegal anywhere else in the word.
-		An initial '+' flags the number as unsigned. In which case the range of the number is up to the maximum
-		  _unsigned_ value for the type before overflow is flagged.
-	Return values are good, bad, overflow.
- */
-static bool console_r_number_decimal(char* cmd) {
+// Regogniser for signed/unsigned decimal numbers.
+bool console_r_number_decimal(char* cmd) {
 	console_ucell_t result;
 	char sign;
 	
@@ -133,8 +126,8 @@ static bool console_r_number_decimal(char* cmd) {
 	return true;
 }
 
-/* Recogniser for hex numbers preceded by a '$'. Return values are good, bad, overflow. */
-static bool console_r_number_hex(char* cmd) {
+// Recogniser for hex numbers preceded by a '$'. 
+bool console_r_number_hex(char* cmd) {
 	if ('$' != *cmd) 
 		return false;
 
@@ -148,7 +141,7 @@ static bool console_r_number_hex(char* cmd) {
 }
 
 // String with a leading '"' pushes address of string which is zero terminated.
-static bool console_r_string(char* cmd) {
+bool console_r_string(char* cmd) {
 	if ('"' != cmd[0])
 		return false;
 
@@ -187,7 +180,7 @@ exit:	*wp = '\0';						// Terminate string in input buffer.
 
 // Hex string with a leading '&', then n pairs of hex digits, pushes address of length of string, then binary data.
 // So `&1aff01' will push a pointer to memory 03 1a ff 01.
-static bool console_r_hex_string(char* cmd) {
+bool console_r_hex_string(char* cmd) {
 	unsigned char* len = (unsigned char*)cmd; // Leave space for length of counted string.
 	if ('&' != *cmd++) 
 		return false;
@@ -208,6 +201,22 @@ static bool console_r_hex_string(char* cmd) {
 	return true;
 }
 
+// Essential commands that will always be required
+bool console_cmds_builtin(char* cmd) {
+	switch (console_hash(cmd)) {
+		case /** . **/ 0xb58b: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;		// Pop and print in signed decimal.
+		case /** U. **/ 0x73de: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;	// Pop and print in unsigned decimal, with leading `+'.
+		case /** $. **/ 0x658f: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;		// Pop and print as 4 hex digits decimal with leading `$'.
+		case /** ." **/ 0x66c9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		// Pop and print string.
+		case /** DEPTH **/ 0xb508: console_u_push(console_u_depth()); break;					// Push stack depth.
+		case /** CLEAR **/ 0x9f9c: console_u_clear(); break;									// Clear stack so that it has zero depth.
+		case /** DROP **/ 0x5c2c: console_u_pop(); break;										// Remove top item from stack.
+		case /** HASH **/ 0x90b7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	// Pop string and push hash value.
+		default: return false;
+	}
+	return true;
+}
+
 // Example output routines.
 #if 0
 console_print(uint8_t s, console_cell_t x) {
@@ -222,8 +231,6 @@ console_print(uint8_t s, console_cell_t x) {
 	}
 }
 #endif
-
-#include "console-cmds-builtin.h"
 
 // Execute a single command from a string
 static uint8_t execute(char* cmd) { 

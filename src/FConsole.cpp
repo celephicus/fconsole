@@ -34,12 +34,7 @@ static void print_console_prompt() { consolePrint(CONSOLE_PRINT_STR_P, (console_
 static void print_console_seperator() {	consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("->")); }
 
 void _FConsole::begin(Stream& s) {
-	_s = &s;
-	
-	// Signon message.
-	consolePrint(CONSOLE_PRINT_NEWLINE, 0); 
-	consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("Arduino Console Example"));
-	
+	_s = &s;													// Set stream for IO. 
 	consoleInit();												// Setup console.
 	print_console_prompt();										// Start off with a prompt.
 }

@@ -20,6 +20,11 @@ bool console_cmds_user(char* cmd) {
 void setup() {
 	Serial.begin(115200);
 	pinMode(LED_BUILTIN, OUTPUT);										// We will drive the LED.
+	
+	// Signon message, note two newlines to leave a gap from any preceding output on the terminal.
+	// Also note no following newline as the console prints one at startup, then a prompt. 
+	consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(CONSOLE_OUTPUT_NEWLINE_STR CONSOLE_OUTPUT_NEWLINE_STR "Arduino Console Example"));
+	
 	FConsole.begin(Serial);
 }
 
