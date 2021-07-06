@@ -4,9 +4,11 @@
 // Struct to hold the console interpreter's state.
 #include <setjmp.h>
 typedef struct {
-	console_cell_t dstack[CONSOLE_DATA_STACK_SIZE];
-	console_cell_t* sp;
-	jmp_buf jmpbuf;				// How we do aborts.
+	console_cell_t dstack[CONSOLE_DATA_STACK_SIZE];	// Our stack, grows down in memory.
+	console_cell_t* sp;								// Stack pointer, points to topmost item. 
+	jmp_buf jmpbuf;									// How we do aborts.
+	const console_recogniser_func* recognisers;		// List of recogniser functions in PROGMEM. 
+
 } console_context_t;
 
 extern console_context_t g_console_ctx;
@@ -42,10 +44,6 @@ void console_u_clear();
 	The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
 	All characters in the string are hashed even non-printable ones. */
 uint16_t console_hash(const char* str);
-
-/* Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return 
-	false if they cannot parse the input string. If they do parse it, they might call raise() if they cannot push a value onto the stack. */
-typedef bool (*console_recogniser)(char* cmd);
 
 /* Recogniser for signed/unsigned decimal number. The number format is as follows:
 	An initial '-' flags the number as negative, the '-' character is illegal anywhere else in the word.

@@ -6,9 +6,6 @@
 #include "console.h"
 #include "console-internals.h"
 
-// How many elements in an array?
-#define ELEMENT_COUNT(x_) (sizeof(x_) / sizeof((x_)[0]))
-
 // Unused static functions are OK. The linker will remove them.
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -204,14 +201,14 @@ bool console_r_hex_string(char* cmd) {
 // Essential commands that will always be required
 bool console_cmds_builtin(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** . **/ 0xb58b: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;		// Pop and print in signed decimal.
-		case /** U. **/ 0x73de: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;	// Pop and print in unsigned decimal, with leading `+'.
-		case /** $. **/ 0x658f: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;		// Pop and print as 4 hex digits decimal with leading `$'.
-		case /** ." **/ 0x66c9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		// Pop and print string.
-		case /** DEPTH **/ 0xb508: console_u_push(console_u_depth()); break;					// Push stack depth.
-		case /** CLEAR **/ 0x9f9c: console_u_clear(); break;									// Clear stack so that it has zero depth.
-		case /** DROP **/ 0x5c2c: console_u_pop(); break;										// Remove top item from stack.
-		case /** HASH **/ 0x90b7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	// Pop string and push hash value.
+		case /** . **/ 0XB58B: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;		// Pop and print in signed decimal.
+		case /** U. **/ 0X73DE: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;	// Pop and print in unsigned decimal, with leading `+'.
+		case /** $. **/ 0X658F: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;		// Pop and print as 4 hex digits decimal with leading `$'.
+		case /** ." **/ 0X66C9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		// Pop and print string.
+		case /** DEPTH **/ 0XB508: console_u_push(console_u_depth()); break;					// Push stack depth.
+		case /** CLEAR **/ 0X9F9C: console_u_clear(); break;									// Clear stack so that it has zero depth.
+		case /** DROP **/ 0X5C2C: console_u_pop(); break;										// Remove top item from stack.
+		case /** HASH **/ 0X90B7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	// Pop string and push hash value.
 		default: return false;
 	}
 	return true;
@@ -234,27 +231,17 @@ console_print(uint8_t s, console_cell_t x) {
 
 // Execute a single command from a string
 static uint8_t execute(char* cmd) { 
-	static const console_recogniser RECOGNISERS[] PROGMEM = {
-		/* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
-			can have potentially any hash value so could look like commands. */
-		console_r_number_decimal,		
-		console_r_number_hex,			
-		console_r_string,				
-		console_r_hex_string,
-		console_cmds_user,			// User defined function. 
-		console_cmds_builtin,		// From "console-cmds-builtin.h"
-	};
-
 	// Establish a point where raise will go to when raise() is called.
 	console_rc_t command_rc = setjmp(g_console_ctx.jmpbuf); // When called in normal execution it returns zero. 
 	if (CONSOLE_RC_OK != command_rc)
 		return command_rc;
 	
-	// try all recognisers in turn until one works. 
-	for (uint8_t i = 0; i < ELEMENT_COUNT(RECOGNISERS); i += 1) {
-		const console_recogniser recog = (console_recogniser)pgm_read_word(&RECOGNISERS[i]);
-		if (recog(cmd))									// Call recogniser function.
-			return CONSOLE_RC_OK;	 									/* Recogniser succeeded. */
+	// Try all recognisers in turn until one works. 
+	const console_recogniser_func* rp = g_console_ctx.recognisers;
+	console_recogniser_func r;
+	while (NULL != (r = (console_recogniser_func)pgm_read_word(rp++))) {
+		if (r(cmd))											// Call recogniser function.
+			return CONSOLE_RC_OK;	 						// Recogniser succeeded. 
 	}
 	return CONSOLE_RC_ERROR_UNKNOWN_COMMAND;
 }
@@ -264,8 +251,10 @@ static bool is_whitespace(char c) {
 }
 
 // External functions.
+//
 
-void consoleInit() {
+void consoleInit(const console_recogniser_func* r_list) {
+	g_console_ctx.recognisers = r_list;
 	console_u_clear();
 }
 
@@ -338,7 +327,7 @@ console_rc_t consoleAccept(char c) {
 			if (!overflow)
 				f_accept_context.inbuf[f_accept_context.inbidx++] = c;
 		}
-		return CONSOLE_RC_ACCEPT_PENDING;
+		return CONSOLE_RC_STATUS_ACCEPT_PENDING;
 	}
 }
 char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
@@ -347,4 +336,3 @@ char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
 uint8_t consoleStackDepth() { return console_u_depth(); }
 console_cell_t consoleStackPick(uint8_t i) { return console_u_pick(i); }
 void consoleReset() { console_u_clear(); }
-//uint8_t consoleAcceptBufferLen() { return f_accept_context.inbidx; }

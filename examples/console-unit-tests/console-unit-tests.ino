@@ -1,24 +1,20 @@
 #include <Arduino.h>
 
-// We are testing the console base library, which can be made to run on anything, so is a bit hairy to use. 
-#include "console.h"
-
-// And the console print function in Fconsole.
+// The console print function in Fconsole. So we include it and it pulls in the other headers that we need. 
 #include "Fconsole.h"
+#include "console-internals.h"
 
 #include <Stream.h>
 #include <stdarg.h>
 #include <stdio.h>
 
-// Need this header for user commands.
-#include "console-internals.h"
-bool console_cmds_user(char* cmd) {
+static bool console_cmds_user(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** + **/ 0xb58e: console_binop(+); break;
-		case /** - **/ 0xb588: console_binop(-); break;
-		case /** NEGATE **/ 0x7a79: console_unop(-); break;
-		case /** # **/ 0xb586: console_raise(CONSOLE_RC_SIGNAL_IGNORE_TO_EOL); break;
-		case /** LED **/ 0xdc88: digitalWrite(13, !!console_u_pop()); break;
+		case /** + **/ 0XB58E: console_binop(+); break;
+		case /** - **/ 0XB588: console_binop(-); break;
+		case /** NEGATE **/ 0X7A79: console_unop(-); break;
+		case /** # **/ 0XB586: console_raise(CONSOLE_RC_STATUS_IGNORE_TO_EOL); break;
+		case /** LED **/ 0XDC88: digitalWrite(13, !!console_u_pop()); break;
 		default: return false;
 	}
 	return true;
@@ -49,12 +45,11 @@ String o_str;
 StringStream o_stream(o_str);
 
 void setup() {
-	FConsole.begin(o_stream);	// Use StringStream object for console print function. 
+	FConsole.begin(console_cmds_user, o_stream);	// Use StringStream object for console print function.  Calls consoleInit().
 
 	Serial.begin(115200);
 	Serial.println();
 	Serial.println(F("Arduino Console Unit Tests"));
-	consoleInit();
 }
 
 // Test code from adapted from minunit: http://www.jera.com/techinfo/jtns/jtn002.html
@@ -117,7 +112,7 @@ char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected
 	char* cp = chk;
 	for (uint8_t i = 0; i < char_count; i += 1) {
 		rc = consoleAccept(*cp++ = ('!' + i));				// Call accept with a printable character.
-		mu_assert_equal_int(CONSOLE_RC_ACCEPT_PENDING, rc);
+		mu_assert_equal_int(CONSOLE_RC_STATUS_ACCEPT_PENDING, rc);
 	}
 	*cp = '\0';
 
