@@ -26,6 +26,7 @@ void console_raise(console_rc_t rc);
 // Error handling in commands.
 void console_verify_can_pop(uint8_t n);
 void console_verify_can_push(uint8_t n);
+#define console_verify_bounds(_x, _size) do { if ((_x) >= (_size)) console_raise(CONSOLE_RC_ERROR_INDEX_OUT_OF_RANGE); } while (0)
 
 // Stack primitives.
 console_cell_t console_u_pick(uint8_t i);
