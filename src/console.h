@@ -1,16 +1,6 @@
 #ifndef CONSOLE_H__
 #define CONSOLE_H__
 
-// Various handy macros copied from my utils.h.
-
-// When something must be true at compile time...
-#define STATIC_ASSERT(expr_) extern int error_static_assert_fail__[(expr_) ? 1 : -1] __attribute__((unused))
-
-// Is an integer type signed, works for chars as well.
-#define utilsIsTypeSigned(T_) (((T_)(-1)) < (T_)0)
-
-// End copy from utils.h. 
-
 // Our little language only works with 16 bit words, called "cells" like FORTH. 
 // Define to allow different types for the 'cell'. 
 #ifndef CONSOLE_CELL_T
@@ -21,11 +11,6 @@
 typedef CONSOLE_CELL_T console_cell_t;
 typedef CONSOLE_UCELL_T console_ucell_t;
 
-// And check for compatibility.
-STATIC_ASSERT(sizeof(console_cell_t) == (sizeof(console_ucell_t))
-STATIC_ASSERT(utilsIsTypeSigned(console_cell_t))
-STATIC_ASSERT(!utilsIsTypeSigned(console_ucell_t))
-	      
 // Get max/min for types. This only works because we assume two's complement representation and we have checked that the signed & unsigned types are compatible. 
 #define CONSOLE_UCELL_MAX (~(console_ucell_t)(0))
 #define CONSOLE_CELL_MAX ((console_cell_t)(CONSOLE_UCELL_MAX >> 1))

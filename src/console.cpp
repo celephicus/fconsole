@@ -6,6 +6,17 @@
 #include "console.h"
 #include "console-internals.h"
 
+// When something must be true at compile time...
+#define STATIC_ASSERT(expr_) extern int error_static_assert_fail__[(expr_) ? 1 : -1] __attribute__((unused))
+
+// Is an integer type signed, works for chars as well.
+#define utilsIsTypeSigned(T_) (((T_)(-1)) < (T_)0)
+
+// And check for compatibility of the two cell types.
+STATIC_ASSERT(sizeof(console_cell_t) == sizeof(console_ucell_t));
+STATIC_ASSERT(utilsIsTypeSigned(console_cell_t));
+STATIC_ASSERT(!utilsIsTypeSigned(console_ucell_t));
+
 // Unused static functions are OK. The linker will remove them.
 #pragma GCC diagnostic ignored "-Wunused-function"
 

@@ -46,23 +46,4 @@ void console_u_clear();
 	All characters in the string are hashed even non-printable ones. */
 uint16_t console_hash(const char* str);
 
-/* Recogniser for signed/unsigned decimal number. The number format is as follows:
-	An initial '-' flags the number as negative, the '-' character is illegal anywhere else in the word.
-	An initial '+' flags the number as unsigned. In which case the range of the number is up to the maximum _unsigned_ value.
-	Abort codes: OVERFLOW if the value parses as a number but overflows the range. */
-bool console_r_number_decimal(char* cmd);
-
-// Recogniser for hex numbers preceded by a '$'. 
-bool console_r_number_hex(char* cmd);
-
-// String with a leading '"' pushes address of string which is zero terminated.
-bool console_r_string(char* cmd);
-
-/* Hex string with a leading '&', then n pairs of hex digits, pushes address of length of string, then binary data.
-	So `&1aff01' will push a pointer to memory 03 1a ff 01. */
-bool console_r_hex_string(char* cmd);
-
-// Essential commands that will always be required
-bool console_cmds_builtin(char* cmd);
-
 #endif // CONSOLE_INTERNALS_H__
