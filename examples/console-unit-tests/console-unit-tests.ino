@@ -72,10 +72,10 @@ int tests_run, tests_fail;
 #define mu_assert_equal_str(val_, expected_) if (0 != strcmp((val_), (expected_))) { tests_fail++; return mk_msg("%s != %s; expected `%s', got `%s'", mkstr(val_), mkstr(expected_), expected_, val_); }
 #define mu_assert_equal_int(val_, expected_) if ((int)(val_) != (int)(expected_))  { tests_fail++; return mk_msg("%s != %s; expected `%d', got `%d'", mkstr(val_), mkstr(expected_), expected_, val_); }
 
-char* check_print(uint8_t pr, console_cell_t x, const char* output) {
+char* check_print(uint8_t opt, console_cell_t x, const char* output) {
 	o_str = "";									// Clear output string of contents from previous test.. 
-	consolePrint(pr, x);
-	mu_assert_equal_str(output, o_str.c_str());	// Verify output string...
+	consolePrint(opt, x);
+	mu_assert_equal_str(o_str.c_str(), output);	// Verify output string...
 	return NULL;
 }
 
@@ -84,9 +84,9 @@ char* check_console(const char* input, const char* output, console_rc_t rc_expec
 	strcpy(inbuf, input);
 	o_str = "";									// Clear output string of contents from previous test.. 
 	consoleReset();								// Clear stack. 
-	console_rc_t rc = consoleProcess(inbuf);			// Process input string.
+	console_rc_t rc = consoleProcess(inbuf);	// Process input string.
 	mu_assert_equal_int(rc, rc_expected);		// Verify return code...
-	mu_assert_equal_str(output, o_str.c_str());	// Verify output string...
+	mu_assert_equal_str(o_str.c_str(), output);	// Verify output string...
 	
 	// Verify stack, starting with depth, then contents.
 	mu_assert_equal_int(consoleStackDepth(), depth_expected); 
@@ -127,12 +127,14 @@ char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected
 
 // Since I had a Pro Mini handy all tests won't fit in the memory, so they have to be tested in batches.
 // If you have a bigger processor such as an ArduinoMega then you can do the lot. 
-#define TEST_BATCH 0 
+#define TEST_BATCH 0
+
 void loop() {
 	mu_init();
 #if (TEST_BATCH == 0) || (TEST_BATCH == 1)
 	// Print routine.
 	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE, 1235, CONSOLE_OUTPUT_NEWLINE_STR));
+	mu_run_test(check_print(-1, 1235, ""));			// No output.
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 0, "0 "));
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 32767, "32767 "));
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, -32768, "-32768 "));
@@ -142,8 +144,18 @@ void loop() {
 	mu_run_test(check_print(CONSOLE_PRINT_HEX, 0, "$0000 "));
 	mu_run_test(check_print(CONSOLE_PRINT_STR, (console_cell_t)"hello", "hello "));
 	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("hello"), "hello "));
+	mu_run_test(check_print(CONSOLE_PRINT_CHAR, 'x', "x "));
 
+	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE|CONSOLE_PRINT_NO_SEP,		1235, CONSOLE_OUTPUT_NEWLINE_STR));  // NO_SEP has no effect. 
+	mu_run_test(check_print((CONSOLE_PRINT_NO_SEP-1)|CONSOLE_PRINT_NO_SEP,	1235, ""));			// No output.
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED|CONSOLE_PRINT_NO_SEP,		0, "0"));
+	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED|CONSOLE_PRINT_NO_SEP,	0, "+0"));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,			0, "$0000"));
+	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP,			(console_cell_t)"hello", "hello"));
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP,		(console_cell_t)PSTR("hello"), "hello"));
+	mu_run_test(check_print(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP,		(console_cell_t)'x', "x"));
 #endif
+
 #if (TEST_BATCH == 0) || (TEST_BATCH == 2)	// Command parsing
 	mu_run_test(check_console("", "",						CONSOLE_RC_OK,				0));
 	mu_run_test(check_console(" ", "",						CONSOLE_RC_OK,				0));
@@ -151,13 +163,13 @@ void loop() {
 	mu_run_test(check_console("foo", "",					CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
 	
 	// Check decimal number parser.
-	mu_run_test(check_console("+a", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// We could have this command if we wanted. It's just not a number.
-	mu_run_test(check_console("-f", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
+	mu_run_test(check_console("+a", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// We could have a command `+a' if we wanted. It's just not a number.
+	mu_run_test(check_console("-f", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// Likewise `-f' could be a command, but it's not a number. 
 	mu_run_test(check_console("0", "",						CONSOLE_RC_OK,				1, 0));
 	mu_run_test(check_console("+0", "",						CONSOLE_RC_OK,				1, 0));
 	mu_run_test(check_console("1", "",						CONSOLE_RC_OK,				1, 1));
 	mu_run_test(check_console("32767", "",					CONSOLE_RC_OK,				1, 32767));
-	mu_run_test(check_console("32767a", "",					CONSOLE_RC_ERROR_UNKNOWN_COMMAND, 0));		// Flagged as unknown command, even though it's really a bad base. 
+	mu_run_test(check_console("1a", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND, 0));		// Flagged as unknown command, even though it's really a bad base. We could have a command `1a'. 
 	mu_run_test(check_console("-32768", "",					CONSOLE_RC_OK,				1, -32768));
 	mu_run_test(check_console("32768", "",					CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
 	mu_run_test(check_console("-32769", "",					CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));

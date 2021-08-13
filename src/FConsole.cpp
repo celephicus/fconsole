@@ -14,11 +14,11 @@ _FConsole FConsole;
 
 /* We have an Arduino print function that requires a Stream instance to print on. This is held in FConsole. 
 	for testing you can set this in FConsole and not use any of its other functions. */
-void consolePrint(uint8_t s, console_cell_t x) {
+void consolePrint(uint8_t opt, console_cell_t x) {
 	if (FConsole.s_stream) {			// If an output stream has not been set do nothing. 
-		switch (s) {
-			case CONSOLE_PRINT_NEWLINE:		FConsole.s_stream->print(F(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return; 	// No trailing space.
-			default:						/* ignore */; return;														// No trailing space.
+		switch (opt & 0x7f) {
+			case CONSOLE_PRINT_NEWLINE:		FConsole.s_stream->print(F(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return; 	// No separator.
+			default:						(void)x; return;															// Ignore, print nothing. 
 			case CONSOLE_PRINT_SIGNED:		FConsole.s_stream->print(x, DEC); break;
 			case CONSOLE_PRINT_UNSIGNED:	FConsole.s_stream->print('+'); FConsole.s_stream->print((console_ucell_t)x, DEC); break;
 			case CONSOLE_PRINT_HEX:			FConsole.s_stream->print('$'); 
@@ -29,12 +29,13 @@ void consolePrint(uint8_t s, console_cell_t x) {
 											FConsole.s_stream->print((console_ucell_t)x, HEX); break;
 			case CONSOLE_PRINT_STR:			FConsole.s_stream->print((const char*)x); break;
 			case CONSOLE_PRINT_STR_P:		FConsole.s_stream->print((const __FlashStringHelper*)x); break;
+			case CONSOLE_PRINT_CHAR:		FConsole.s_stream->print((char)x); break;
 		}
-		FConsole.s_stream->print(' '); 			// Print trailing space here. 
+		if (!(opt & CONSOLE_PRINT_NO_SEP))	FConsole.s_stream->print(' ');			// Print a space.
 	}
 }
 
-static void print_consoles_streameperator() {	consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("->")); }
+static void print_console_seperator() { consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("->")); }
 
 /* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 	can have potentially any hash value so could look like commands. */
@@ -44,7 +45,7 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 	console_r_string,				
 	console_r_hex_string,
 	console_cmds_builtin,		
-	_FConsole::r_cmds_user,			// Static member function, so it has an address with no this pointer. 
+	_FConsole::r_cmds_user,			// Static member function, so it does not need a `this' pointer. 
 	NULL
 };
 
@@ -67,7 +68,7 @@ void _FConsole::service() {
 		console_rc_t rc = consoleAccept(c);						// Add it to the input buffer.
 		if (rc >= CONSOLE_RC_OK) {								// On newline...
 			consolePrint(CONSOLE_PRINT_STR, (console_cell_t)consoleAcceptBuffer());	// Echo input line back to terminal. 
-			print_consoles_streameperator();							// Seperator string for output. 
+			print_console_seperator();							// Seperator string for output. 
 			if (CONSOLE_RC_OK == rc)							// If accept has _NOT_ returned an error process the input...	 
 				rc = consoleProcess(consoleAcceptBuffer());		// Process input string from input buffer filled by accept and record error code. 
 			if (CONSOLE_RC_OK != rc) {							// If all went well then we get an OK status code

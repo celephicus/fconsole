@@ -216,16 +216,18 @@ bool console_cmds_builtin(char* cmd) {
 
 // Example output routines.
 #if 0
-console_print(uint8_t s, console_cell_t x) {
-	switch (s) {
-		case CONSOLE_PRINT_NEWLINE:		printf(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; break;
+void consolePrint(uint8_t opt, console_cell_t x) {
+	switch (opt & 0x7f) {
+		case CONSOLE_PRINT_NEWLINE:		printf(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return;
+		default:						/* ignore */; return;
 		case CONSOLE_PRINT_SIGNED:		printf("%d ", x); break;
 		case CONSOLE_PRINT_UNSIGNED:	printf("+%u ", (console_ucell_t)x); break;
 		case CONSOLE_PRINT_HEX:			printf("$%4x ", (console_ucell_t)x); break;
 		case CONSOLE_PRINT_STR:			/* fall through... */
-		case CONSOLE_PRINT_STR_P:		printf("%s ", (const char*)x); break;
-		default:						/* ignore */; break;
+		case CONSOLE_PRINT_STR_P:		puts((const char*)x); break;
+		case CONSOLE_PRINT_CHAR:		putc((char)x); break;
 	}
+	if (!(opt & CONSOLE_PRINT_NO_SEP))	putc(' ');			// Print a space unless instructed not to. 
 }
 #endif
 

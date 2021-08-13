@@ -11,7 +11,7 @@ public:
 	void service();
 	
 	// Shim function to call function pointer in RAM from a static function whose address can be in PROGMEM.
-	static bool r_cmds_user(char* cmd) { return s_r_user(cmd); }
+	static bool r_cmds_user(char* cmd) { return (s_r_user) ? s_r_user(cmd) : false; }
 	
 public:		// All data public and static.
 	static console_recogniser_func s_r_user;
