@@ -1,20 +1,50 @@
 #ifndef CONSOLE_H__
 #define CONSOLE_H__
 
+// Various handy macros copied from my utils.h.
+
+// When something must be true at compile time...
+#define STATIC_ASSERT(expr_) extern int error_static_assert_fail__[(expr_) ? 1 : -1] __attribute__((unused))
+
+// Is an integer type signed, works for chars as well.
+#define utilsIsTypeSigned(T_) (((T_)(-1)) < (T_)0)
+
+// End copy from utils.h. 
+
 // Our little language only works with 16 bit words, called "cells" like FORTH. 
-typedef int16_t console_cell_t;
-typedef uint16_t console_ucell_t;
-#define CONSOLE_UCELL_MAX ((console_ucell_t)0xffff)
-#define CONSOLE_CELL_MAX ((console_cell_t)0x7fff)
-#define CONSOLE_CELL_MIN ((console_cell_t)0x8000)
+// Define to allow different types for the 'cell'. 
+#ifndef CONSOLE_CELL_T
+#define CONSOLE_CELL_T  int16_t
+#define CONSOLE_UCELL_T uint16_t
+#endif
+
+typedef CONSOLE_CELL_T console_cell_t;
+typedef CONSOLE_UCELL_T console_ucell_t;
+
+// And check for compatibility.
+STATIC_ASSERT(sizeof(console_cell_t) == (sizeof(console_ucell_t))
+STATIC_ASSERT(utilsIsTypeSigned(console_cell_t))
+STATIC_ASSERT(!utilsIsTypeSigned(console_ucell_t))
+	      
+// Get max/min for types. This only works because we assume two's complement representation and we have checked that the signed & unsigned types are compatible. 
+#define CONSOLE_UCELL_MAX (~(console_ucell_t)(0))
+#define CONSOLE_CELL_MAX ((console_cell_t)(CONSOLE_UCELL_MAX >> 1))
+#define CONSOLE_CELL_MIN ((console_cell_t)(~(CONSOLE_UCELL_MAX >> 1)))
 
 // Stack size, we don't need much.
+#ifndef CONSOLE_DATA_STACK_SIZE
 #define CONSOLE_DATA_STACK_SIZE (8)
-
+#endif
+	      
 // Input buffer 
+#ifndef CONSOLE_INPUT_BUFFER_SIZE
 #define CONSOLE_INPUT_BUFFER_SIZE 40
+#endif
+	      
+#ifndef CONSOLE_INPUT_NEWLINE_CHAR
 #define CONSOLE_INPUT_NEWLINE_CHAR '\r'
-
+#endif
+	      
 /* Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return 
 	false if they cannot parse the input string. If they do parse it, they might call raise() if they cannot push a value onto the stack. */
 typedef bool (*console_recogniser_func)(char* cmd);
