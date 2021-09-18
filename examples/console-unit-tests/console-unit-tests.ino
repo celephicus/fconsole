@@ -96,7 +96,7 @@ char* check_console(const char* input, const char* output, console_rc_t rc_expec
 		if (consoleStackPick(depth_expected) != va_arg(ap, console_cell_t)) { 
 			sprintf(msg, " stack: "); 
 			for (uint8_t i = 0; i < consoleStackDepth(); i += 1) 
-				sprintf(msg+strlen(msg), "%d ", consoleStackPick(i)); 
+				sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_CELL " ", consoleStackPick(i)); 
 			return msg;
 		}
 	}
@@ -136,12 +136,25 @@ void loop() {
 	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE, 1235, CONSOLE_OUTPUT_NEWLINE_STR));
 	mu_run_test(check_print(-1, 1235, ""));			// No output.
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 0, "0 "));
-	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 32767, "32767 "));
-	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, -32768, "-32768 "));
 	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 0, "+0 "));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX, 0, "$0000 "));
+
+#if sizeof(console_cell_t) == 2
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 2147483647L, "2147483647 "));
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, -2147483648L, "-2147483648 "));
 	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 0xffff, "+65535 "));
 	mu_run_test(check_print(CONSOLE_PRINT_HEX, 0xffff, "$FFFF "));
-	mu_run_test(check_print(CONSOLE_PRINT_HEX, 0, "$0000 "));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,			0, "$0000"));
+#elif sizeof(console_cell_t) == 4
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 32767, "32767 "));
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, -32768, "-32768 "));
+	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 0xffffffff, "+4294967295 "));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX, 0xffffffff, "$FFFFFFFF "));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,			0, "$00000000"));
+#else
+	#error console_cell_t not 16 or 32 bit
+#endif
+
 	mu_run_test(check_print(CONSOLE_PRINT_STR, (console_cell_t)"hello", "hello "));
 	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("hello"), "hello "));
 	mu_run_test(check_print(CONSOLE_PRINT_CHAR, 'x', "x "));
@@ -150,7 +163,6 @@ void loop() {
 	mu_run_test(check_print((CONSOLE_PRINT_NO_SEP-1)|CONSOLE_PRINT_NO_SEP,	1235, ""));			// No output.
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED|CONSOLE_PRINT_NO_SEP,		0, "0"));
 	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED|CONSOLE_PRINT_NO_SEP,	0, "+0"));
-	mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,			0, "$0000"));
 	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP,			(console_cell_t)"hello", "hello"));
 	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP,		(console_cell_t)PSTR("hello"), "hello"));
 	mu_run_test(check_print(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP,		(console_cell_t)'x', "x"));

@@ -1,34 +1,21 @@
 #ifndef CONSOLE_H__
 #define CONSOLE_H__
 
-// Our little language only works with 16 bit words, called "cells" like FORTH. 
-// Define to allow different types for the 'cell'. 
-#ifndef CONSOLE_CELL_T
-#define CONSOLE_CELL_T  int16_t
-#define CONSOLE_UCELL_T uint16_t
+// Allow a local include file to override the various CONSOLE_xxx macros. Else we have some canned definitions
+#if defined(CONSOLE_LOCALS_DEFAULT_H__) || defined(CONSOLE_LOCALS_H__)
+#error console-locals.h included with console-locals-default.h
 #endif
 
-typedef CONSOLE_CELL_T console_cell_t;
-typedef CONSOLE_UCELL_T console_ucell_t;
+#ifdef CONSOLE_USE_LOCALS
+#include "console-locals.h"
+#else
+#include "console-locals-default.h"
+#endif
 
 // Get max/min for types. This only works because we assume two's complement representation and we have checked that the signed & unsigned types are compatible. 
 #define CONSOLE_UCELL_MAX (~(console_ucell_t)(0))
 #define CONSOLE_CELL_MAX ((console_cell_t)(CONSOLE_UCELL_MAX >> 1))
 #define CONSOLE_CELL_MIN ((console_cell_t)(~(CONSOLE_UCELL_MAX >> 1)))
-
-// Stack size, we don't need much.
-#ifndef CONSOLE_DATA_STACK_SIZE
-#define CONSOLE_DATA_STACK_SIZE (8)
-#endif
-	      
-// Input buffer 
-#ifndef CONSOLE_INPUT_BUFFER_SIZE
-#define CONSOLE_INPUT_BUFFER_SIZE 40
-#endif
-	      
-#ifndef CONSOLE_INPUT_NEWLINE_CHAR
-#define CONSOLE_INPUT_NEWLINE_CHAR '\r'
-#endif
 	      
 /* Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return 
 	false if they cannot parse the input string. If they do parse it, they might call raise() if they cannot push a value onto the stack. */
