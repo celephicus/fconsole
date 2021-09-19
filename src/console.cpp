@@ -6,7 +6,7 @@
 #include "console.h"
 #include "console-internals.h"
 
-// When something must be true at compile time...
+// Check integral types. If this is wrong so much will break in surprising ways.
 #define STATIC_ASSERT(expr_) extern int error_static_assert_fail__[(expr_) ? 1 : -1] __attribute__((unused))
 
 // Is an integer type signed, works for chars as well.
