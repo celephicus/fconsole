@@ -1,5 +1,5 @@
-#ifndef CONSOLE_LOCALS_DEFAULT_H__
-#define CONSOLE_LOCALS_DEFAULT_H__
+#ifndef CONSOLE_CONFIG_DEFAULT_H__
+#define CONSOLE_CONFIG_DEFAULT_H__
 
 // This is the default configuration file. It may be used as a template for a local configuration file `console-locals.h' which is included if `CONSOLE_USE_LOCALS' is defined.
 
@@ -21,4 +21,4 @@ typedef uint16_t console_ucell_t;
 // Character to signal EOL for input string.
 #define CONSOLE_INPUT_NEWLINE_CHAR '\r'
 
-#endif // CONSOLE_LOCALS_DEFAULT_H__
+#endif // CONSOLE_CONFIG_DEFAULT_H__
