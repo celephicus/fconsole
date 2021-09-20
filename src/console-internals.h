@@ -8,7 +8,6 @@ typedef struct {
 	console_cell_t* sp;								// Stack pointer, points to topmost item. 
 	jmp_buf jmpbuf;									// How we do aborts.
 	const console_recogniser_func* recognisers;		// List of recogniser functions in PROGMEM. 
-
 } console_context_t;
 
 extern console_context_t g_console_ctx;

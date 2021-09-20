@@ -1,8 +1,11 @@
 # COMMENTS CANNOT BE ON THE SAME LINE AS PATTERNS!!!!!!!!! That's an hour of my life I'll never get back!
 
-# Exclude Atmel Studio projects that I use for debugging in the examples dir. By convention these are in dirs with a name beginning `as-'.
-**/as-*/
+# I use an Atmel Studio project for debugging the examples. This pattern excludes the build directory.
+**/Debug/
 
 # Stupid Atmel Studio is prone to creating these in the most surprising places...
 .vs/    
+
+# arduino-cli log file is not interesting.
+arduino-cli.log
 

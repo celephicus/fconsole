@@ -2,14 +2,14 @@
 #define CONSOLE_H__
 
 // Allow a local include file to override the various CONSOLE_xxx macros. Else we have some canned definitions
-#if defined(CONSOLE_LOCALS_DEFAULT_H__) || defined(CONSOLE_LOCALS_H__)
-#error console-locals.h included with console-locals-default.h
+#if defined(CONSOLE_CONFIG_DEFAULT_H__) || defined(CONSOLE_CONFIG_LOCAL_H__)
+#error console-config-local.h included with console-config-default.h
 #endif
 
-#ifdef CONSOLE_USE_LOCALS
-#include "console-locals.h"
+#ifdef CONSOLE_USE_LOCAL_CONFIG
+#include "console-config-local.h"
 #else
-#include "console-locals-default.h"
+#include "console-config-default.h"
 #endif
 
 // Get max/min for types. This only works because we assume two's complement representation and we have checked that the signed & unsigned types are compatible. 
