@@ -1,5 +1,7 @@
+#! /usr/bin/python3
+
 # Open an input file and write it back.
-# 	case /** . **/ 0xb58b: console_print_signed_decimal(); break;										
+# 	case /** . **/ 0xb58b: console_print_signed_decimal(); break;
 # Lines that match `/** <PRINTABLE-CHARS> **/ 0x<hex-chars>:' have the hex chars replaced with a hash of the printable chars.
 import re, sys, glob
 
@@ -9,18 +11,24 @@ def subber_hash(m):
     w = m.group(1).upper()
     for c in w:
         h = ((h * HASH_MULT) & 0xffff) ^ ord(c)
-    
-    return '/** %s **/ 0X%04X' % (w, h)  
+
+    return '/** %s **/ 0X%04X' % (w, h)
 
 for infile in glob.glob(sys.argv[1], recursive=True):
 	text = open(infile, 'rt').read()
 	existing = text
 
-	text = re.sub(r'/\*\*\s*(\S+)\s*\*\*/\s*(0[x])?([0-9a-z]*)', subber_hash, text, flags=re.I)
-		
-	if text != existing:    
+	text = re.sub(r'''
+	  /\*\*\s*		# `/** <spaces>'
+	  (\S+)			# Command name, any non-whitespace characters.
+	  \s*\*\*/		# `<spaces> **/'
+	  \s*			# More spaces.
+	  (0[x])?([0-9a-z]*)	# Hex number withleading `0x'.
+	''', subber_hash, text, flags=re.I|re.X)
+
+	if text != existing:
 		print("Updated file %s." % infile, file=sys.stderr)
 		open(infile, 'wt').write(text)
 	else:
 		print("Skipped file %s as unchanged." % infile, file=sys.stderr)
-		
+
