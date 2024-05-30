@@ -6,7 +6,7 @@
 ProjectName            :=desktop
 ConfigurationName      :=Debug
 WorkspaceConfiguration :=Debug
-WorkspacePath          :=/home/tomh/git/fconsole/examples
+WorkspacePath          :=/home/tomh/git/fconsole/examples/desktop
 ProjectPath            :=/home/tomh/git/fconsole/examples/desktop
 IntermediateDirectory  :=./Debug
 OutDir                 := $(IntermediateDirectory)

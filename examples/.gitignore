@@ -1,3 +1,4 @@
+# Ignore codelite junk.
 .codelite
 compile_commands.json
 

@@ -2,7 +2,7 @@
 
 All:
 	@echo "----------Building project:[ desktop - Debug ]----------"
-	@cd "desktop" && "$(MAKE)" -f  "desktop.mk"
+	@"$(MAKE)" -f  "desktop.mk"
 clean:
 	@echo "----------Cleaning project:[ desktop - Debug ]----------"
-	@cd "desktop" && "$(MAKE)" -f  "desktop.mk" clean
+	@"$(MAKE)" -f  "desktop.mk" clean
