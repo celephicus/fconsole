@@ -6,16 +6,19 @@
 #include "console.h"
 #include "console-internals.h"
 
-// Check integral types. If this is wrong so much will break in surprising ways.
+// Clever macro to allow checking sizeof at compile time, _after_ preprocessing.
 #define STATIC_ASSERT(expr_) extern int error_static_assert_fail__[(expr_) ? 1 : -1] __attribute__((unused))
 
 // Is an integer type signed, works for chars as well.
 #define utilsIsTypeSigned(T_) (((T_)(-1)) < (T_)0)
 
-// And check for compatibility of the two cell types.
+// And check for compatibility of the two cell types. If this is wrong so much will break in surprising ways.
 STATIC_ASSERT(sizeof(console_cell_t) == sizeof(console_ucell_t));
 STATIC_ASSERT(utilsIsTypeSigned(console_cell_t));
 STATIC_ASSERT(!utilsIsTypeSigned(console_ucell_t));
+
+// The cell type must be able to represent a pointer.
+STATIC_ASSERT(sizeof(void*) == sizeof(console_ucell_t));
 
 // Unused static functions are OK. The linker will remove them.
 #pragma GCC diagnostic ignored "-Wunused-function"
