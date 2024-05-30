@@ -262,9 +262,8 @@ static uint8_t execute(char* cmd) {
 	return CONSOLE_RC_ERROR_UNKNOWN_COMMAND;
 }
 
-static bool is_whitespace(char c) {
-	return (' ' == c) || ('\t' == c);
-}
+static bool is_whitespace(char c) { return (' ' == c) || ('\t' == c); }
+static bool is_nul(char c) { return ('\0' == c); }
 
 // External functions.
 //
@@ -274,40 +273,31 @@ void consoleInit(const console_recogniser_func* r_list) {
 	console_u_clear();
 }
 
-console_rc_t consoleProcess(char* str) {
+console_rc_t consoleProcess(char* str, char** current) {
 	// Iterate over input, breaking into words.
 	while (1) {
 		while (is_whitespace(*str)) 									// Advance past leading spaces.
 			str += 1;
 
-		if ('\0' == *str)												// Stop at end.
+		if (is_nul(*str))												// Stop at end.
 			break;
 
 		// Record start & advance until we see a space.
 		char* cmd = str;
-		while ((!is_whitespace(*str)) && ('\0' != *str))
+		while ((!is_whitespace(*str)) && (!is_nul(*str)))
 			str += 1;
 
-		/* Terminate this command and execute it. We crash out if execute() flags an error. */
-		if (cmd == str) 				// If there is no command to execute then we are done.
-			break;
-
-		const bool at_end = ('\0' == *str);		// Record if there was already a nul at the end of this string.
-		if (!at_end) {
-			*str = '\0';							// Terminate white space delimited command in strut buffer.
-			str += 1;								// Advance to next char.
-		}
+		if (!is_nul(*str))								// If there was NOT already a nul at the end of this string...
+			*str++ = '\0';							// Terminate white space delimited command and advance to next char.
 
 		/* Execute parsed command and exit on any abort, so that we do not exwcute any more commands.
 			Note that no error is returned for any negative eror codes, which is used to implement comments with the
 			CONSOLE_RC_SIGNAL_IGNORE_TO_EOL code. */
 		const console_rc_t command_rc = execute(cmd);
+		if (NULL != current)	// Update user pointer to point to last command executed, good got error messages.
+			*current = cmd;
 		if (CONSOLE_RC_OK != command_rc)
 			return (command_rc < CONSOLE_RC_OK) ? CONSOLE_RC_OK : command_rc;
-
-		// If last command break out of loop.
-		if (at_end)
-			break;
 	}
 
 	return CONSOLE_RC_OK;

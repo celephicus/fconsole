@@ -91,8 +91,10 @@ typedef int8_t console_rc_t;
 // Return a short description of the error as a pointer to a PROGMEM string.
 const char* consoleGetErrorDescription(console_rc_t err);
 
-// Evaluate a line of string input. Note that the parser unusually writes back to the input string. It will never go beyond the terminating nul.
-console_rc_t consoleProcess(char* str);
+// Evaluate a line of string input. Note that the parser unusually writes back to the input string. 
+// It will never go beyond the terminating nul.
+// If pointer current supplied it is set to command in the input buffer that has been executed.
+console_rc_t consoleProcess(char* str, char** current);
 
 // Input functions, not essential but helpful.
 

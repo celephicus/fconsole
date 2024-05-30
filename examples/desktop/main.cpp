@@ -65,14 +65,15 @@ int main(int argc, char **argv) {
 			putchar(c);
 		console_rc_t rc = consoleAccept(c);		// Add it to the input buffer.
 		if (rc >= CONSOLE_RC_OK) {				// On newline...
+			char* cmd;
 			fputs(" -> ", stdout); 				// Seperator string for output.
-			rc = consoleProcess(consoleAcceptBuffer());	// Process input string from input buffer filled by accept and record error code.
+			rc = consoleProcess(consoleAcceptBuffer(), &cmd);	// Process input string from input buffer filled by accept and record error code.
 			if (CONSOLE_RC_OK != rc) {			// If all went well then we get an OK status code.
 				if (CONSOLE_RC_ERROR_USER_EXIT == rc) {
 					puts("Bye...");
 					break;
 				}
-				printf("Error: %s: %d", consoleGetErrorDescription(rc), rc);
+				printf("Error in command `%s': %s (%d)", cmd, consoleGetErrorDescription(rc), rc);
 			}
 			prompt();							// In any case print a newline and prompt ready for the next line of input.
 		}
