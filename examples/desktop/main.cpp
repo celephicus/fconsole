@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "console.h"
-#include "console-internals.h"
 
 enum {
 	CONSOLE_RC_ERROR_USER_EXIT = CONSOLE_RC_ERROR_USER, // Exit from program
@@ -56,7 +55,8 @@ int getch(void) {
 
 int main(int argc, char **argv) {
 	consoleInit(RECOGNISERS);							// Setup console.
-	fputs(CONSOLE_OUTPUT_NEWLINE_STR CONSOLE_OUTPUT_NEWLINE_STR "FConsole Example", stdout);
+	fputs("\n\n" 
+	      "FConsole Example", stdout);
 	prompt();
 
 	while (1) {
@@ -83,8 +83,8 @@ int main(int argc, char **argv) {
 
 void consolePrint(uint8_t opt, console_cell_t x) {
 	switch (opt & 0x7f) {
-		case CONSOLE_PRINT_NEWLINE:		printf(CONSOLE_OUTPUT_NEWLINE_STR); (void)x; return; 	// No separator.
-		default:						(void)x; return;															// Ignore, print nothing.
+		case CONSOLE_PRINT_NEWLINE:		printf("\n"); (void)x; return; 				// No separator.
+		default:						(void)x; return;							// Ignore, print nothing.
 		case CONSOLE_PRINT_SIGNED:		printf("%ld", x); break;
 		case CONSOLE_PRINT_UNSIGNED:	printf("+%lu", (console_ucell_t)x); break;
 		case CONSOLE_PRINT_HEX:			printf("$%lx", (console_ucell_t)x); break;
@@ -92,6 +92,6 @@ void consolePrint(uint8_t opt, console_cell_t x) {
 		case CONSOLE_PRINT_STR:			fputs((const char*)x, stdout); break;
 		case CONSOLE_PRINT_CHAR:		putchar((char)x); break;
 	}
-	if (!(opt & CONSOLE_PRINT_NO_SEP))	putchar(' ');			// Print a space.
+	if (!(opt & CONSOLE_PRINT_NO_SEP))	putchar(' ');								// Print a space.
 }
 

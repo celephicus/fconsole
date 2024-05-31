@@ -16,7 +16,8 @@ extern "C" {
 #include "console-config-default.h"
 #endif
 
-// Get max/min for types. This only works because we assume two's complement representation and we have checked that the signed & unsigned types are compatible.
+/* Get max/min for types. This only works because we assume two's complement representation 
+ * and we have checked that the signed & unsigned types are compatible. */
 #define CONSOLE_UCELL_MAX (~(console_ucell_t)(0))
 #define CONSOLE_CELL_MAX ((console_cell_t)(CONSOLE_UCELL_MAX >> 1))
 #define CONSOLE_CELL_MIN ((console_cell_t)(~(CONSOLE_UCELL_MAX >> 1)))
@@ -31,9 +32,8 @@ typedef bool (*console_recogniser_func)(char* cmd);
 void consoleInit(const console_recogniser_func* r_list);
 
 // Function to print on the output stream. You must supply this. An example is in a comment in console.cpp. Unknown options are ignored and cause no output.
-#define CONSOLE_OUTPUT_NEWLINE_STR "\r\n"
 enum {
-	CONSOLE_PRINT_NEWLINE,		// Prints the newline string CONSOLE_OUTPUT_NEWLINE_STR, second arg ignored, no seperator is printed.
+	CONSOLE_PRINT_NEWLINE,		// Prints a newline, second arg ignored, no seperator is printed.
 	CONSOLE_PRINT_SIGNED,		// Prints second arg as a signed integer, e.g `-123 ', `0 ', `456 ', note trailing SPACE.
 	CONSOLE_PRINT_UNSIGNED,		// Print second arg as an unsigned integer, e.g `+0 ', `+123 ', note trailing SPACE.
 	CONSOLE_PRINT_HEX,			// Print second arg as a hex integer, e.g `$0000 ', `$abcd ', note trailing SPACE.
@@ -86,26 +86,54 @@ enum {
 };
 
 // Type for a console API call status code.
-typedef int8_t console_rc_t;
+typedef int_least8_t console_rc_t;
 
 // Return a short description of the error as a pointer to a PROGMEM string.
 const char* consoleGetErrorDescription(console_rc_t err);
 
-// Evaluate a line of string input. Note that the parser unusually writes back to the input string. 
-// It will never go beyond the terminating nul.
-// If pointer current supplied it is set to command in the input buffer that has been executed.
+/* Evaluate a line of string input. Note that the parser unusually writes back to the input string. 
+	It will never go beyond the terminating nul.
+	If pointer current supplied it is set to command in the input buffer that has been executed. */
 console_rc_t consoleProcess(char* str, char** current);
 
-// Input functions, not essential but helpful.
+// Input functions, may be helpful.
 
-/* Resets the state of accept to what it was after calling consoleInit(), or after consoleAccept() has read a newline and returned either CONSOLE_RC_OK
-	or CONSOLE_ERROR_INPUT_OVERFLOW. */
+/* Resets the state of accept to what it was after calling consoleInit(), or after consoleAccept() has read a newline 
+ * and returned either CONSOLE_RC_OK or CONSOLE_ERROR_INPUT_OVERFLOW. */
 void consoleAcceptClear();
 
 /* Read chars into a buffer, returning CONSOLE_ERROR_ACCEPT_PENDING. Only CONSOLE_INPUT_BUFFER_SIZE chars are stored.
 	If the character CONSOLE_INPUT_NEWLINE_CHAR is seen, then return CONSOLE_RC_OK if no overflow, else CONSOLE_ERROR_INPUT_OVERFLOW.
 	In either case the buffer is nul terminated, but not all chars will have been stored on overflow. */
 console_rc_t consoleAccept(char c);
+
+// Followint functions are for implementing commands. Do not use unless in a recogniser function called by the console.
+
+// Call on error, thanks to the magic of longjmp() it will return to the last setjmp with the error code.
+void console_raise(console_rc_t rc);
+
+// Error handling in commands.
+void console_verify_can_pop(uint_least8_t n);
+void console_verify_can_push(uint_least8_t n);
+void console_verify_bounds(uint_least8_t idx, uint_least8_t size);
+
+// Stack primitives.
+console_cell_t console_u_pick(uint8_t i);
+console_cell_t& console_u_tos();
+console_cell_t& console_u_nos();
+console_cell_t console_u_depth();
+console_cell_t console_u_pop();
+void console_u_push(console_cell_t x);
+void console_u_clear();
+
+/* Some helper macros for commands. */
+#define console_binop(op_)	{ const console_cell_t rhs = console_u_pop(); console_u_tos() = console_u_tos() op_ rhs; } 	// Implement a binary operator.
+#define console_unop(op_)	{ console_u_tos() = op_ console_u_tos(); }											// Implement a unary operator.
+
+// Following functions are for testing only.
+//
+
+// Return input buffer, only valid when consoleAccept() has not returned PENDING.
 char* consoleAcceptBuffer();
 
 // Return depth of stack, useful for testing.
@@ -117,6 +145,11 @@ console_cell_t consoleStackPick(uint8_t i);
 /* Resets the state of the console to what it would be after initialisation. Note does not affect the state of accept.
 	Useful for testing. */
 void consoleReset();
+
+/* Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
+	The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
+	All characters in the string are hashed even non-printable ones. */
+uint16_t console_hash(const char* str);
 
 #ifdef __cplusplus
 }

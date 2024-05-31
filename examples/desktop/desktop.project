@@ -10,7 +10,6 @@
     <File Name="../../src/console.cpp"/>
     <File Name="../../src/console.h"/>
     <File Name="../../src/console-config-default.h"/>
-    <File Name="../../src/console-internals.h"/>
     <File Name="../../src/console-mk.py"/>
     <File Name="../../src/fconsole.h"/>
     <File Name="../../src/FConsole.cpp" ExcludeProjConfig="Debug;"/>

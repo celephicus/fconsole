@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <setjmp.h>
 
 #include "console.h"
-#include "console-internals.h"
 
 // Clever macro to allow checking sizeof at compile time, _after_ preprocessing.
 #define STATIC_ASSERT(expr_) extern int error_static_assert_fail__[(expr_) ? 1 : -1] __attribute__((unused))
@@ -23,7 +23,22 @@ STATIC_ASSERT(sizeof(void*) == sizeof(console_ucell_t));
 // Unused static functions are OK. The linker will remove them.
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-console_context_t g_console_ctx;
+// Struct to hold the console interpreter's state.
+typedef struct {
+	console_cell_t dstack[CONSOLE_DATA_STACK_SIZE];	// Our stack, grows down in memory.
+	console_cell_t* sp;								// Stack pointer, points to topmost item. 
+	jmp_buf jmpbuf;									// How we do aborts.
+	const console_recogniser_func* recognisers;		// List of recogniser functions in PROGMEM. 
+} console_context_t;
+
+static console_context_t f_console_ctx;
+
+// Stack fills from top down.
+#define CONSOLE_STACKBASE (&f_console_ctx.dstack[CONSOLE_DATA_STACK_SIZE])
+
+// Predicates for push & pop.
+#define console_can_pop(n_) (f_console_ctx.sp < (CONSOLE_STACKBASE - (n_) + 1))
+#define console_can_push(n_) (f_console_ctx.sp >= &f_console_ctx.dstack[0 + (n_)])
 
 // State for consoleAccept(). Done seperately as if not used the linker will remove it.
 typedef struct {
@@ -34,21 +49,22 @@ static accept_context_t f_accept_context;
 
 // Call on error, thanks to the magic of longjmp() it will return to the last setjmp with the error code.
 void console_raise(console_rc_t rc) {
-	longjmp(g_console_ctx.jmpbuf, rc);
+	longjmp(f_console_ctx.jmpbuf, rc);
 }
 
 // Error handling in commands.
 void console_verify_can_pop(uint8_t n) { if (!console_can_pop(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); }
 void console_verify_can_push(uint8_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
+void console_verify_bounds(uint_least8_t idx, uint_least8_t size) { if (idx >= size) console_raise(CONSOLE_RC_ERROR_INDEX_OUT_OF_RANGE); }
 
 // Stack primitives.
-console_cell_t console_u_pick(uint8_t i)	{ return g_console_ctx.sp[i]; }
-console_cell_t& console_u_tos() 			{ console_verify_can_pop(1); return *g_console_ctx.sp; }
-console_cell_t& console_u_nos() 			{ console_verify_can_pop(2); return *(g_console_ctx.sp + 1); }
-console_cell_t console_u_depth() 			{ return (CONSOLE_STACKBASE - g_console_ctx.sp); }
-console_cell_t console_u_pop() 				{ console_verify_can_pop(1); return *(g_console_ctx.sp++); }
-void console_u_push(console_cell_t x) 		{ console_verify_can_push(1); *--g_console_ctx.sp = x; }
-void console_u_clear()						{ g_console_ctx.sp = CONSOLE_STACKBASE; }
+console_cell_t console_u_pick(uint8_t i)	{ return f_console_ctx.sp[i]; }
+console_cell_t& console_u_tos() 			{ console_verify_can_pop(1); return *f_console_ctx.sp; }
+console_cell_t& console_u_nos() 			{ console_verify_can_pop(2); return *(f_console_ctx.sp + 1); }
+console_cell_t console_u_depth() 			{ return (CONSOLE_STACKBASE - f_console_ctx.sp); }
+console_cell_t console_u_pop() 				{ console_verify_can_pop(1); return *(f_console_ctx.sp++); }
+void console_u_push(console_cell_t x) 		{ console_verify_can_push(1); *--f_console_ctx.sp = x; }
+void console_u_clear()						{ f_console_ctx.sp = CONSOLE_STACKBASE; }
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
@@ -248,12 +264,12 @@ void consolePrint(uint8_t opt, console_cell_t x) {
 // Execute a single command from a string
 static uint8_t execute(char* cmd) {
 	// Establish a point where raise will go to when raise() is called.
-	console_rc_t command_rc = setjmp(g_console_ctx.jmpbuf); // When called in normal execution it returns zero.
+	console_rc_t command_rc = setjmp(f_console_ctx.jmpbuf); // When called in normal execution it returns zero.
 	if (CONSOLE_RC_OK != command_rc)
 		return command_rc;
 
 	// Try all recognisers in turn until one works.
-	const console_recogniser_func* rp = g_console_ctx.recognisers;
+	const console_recogniser_func* rp = f_console_ctx.recognisers;
 	console_recogniser_func r;
 	while (NULL != (r = (console_recogniser_func)pgm_read_word(rp++))) {
 		if (r(cmd))											// Call recogniser function.
@@ -269,7 +285,7 @@ static bool is_nul(char c) { return ('\0' == c); }
 //
 
 void consoleInit(const console_recogniser_func* r_list) {
-	g_console_ctx.recognisers = r_list;
+	f_console_ctx.recognisers = r_list;
 	console_u_clear();
 }
 
