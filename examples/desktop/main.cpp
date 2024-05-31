@@ -13,6 +13,7 @@ static bool console_cmds_user(char* cmd) {
 		case /** + **/ 0XB58E: console_binop(+); break;
 		case /** - **/ 0XB588: console_binop(-); break;
 		case /** NEGATE **/ 0X7A79: console_unop(-); break;
+		case /** RAISE **/ 0X4069: console_raise(console_u_pop()); break;
 		case /** EXIT **/ 0XC745: console_raise(CONSOLE_RC_ERROR_USER_EXIT); break;
 		case /** # **/ 0XB586: console_raise(CONSOLE_RC_STATUS_IGNORE_TO_EOL); break;
 		default: return false;

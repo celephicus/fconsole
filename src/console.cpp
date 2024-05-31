@@ -264,8 +264,21 @@ void consolePrint(uint8_t opt, console_cell_t x) {
 static bool is_whitespace(char c) { return (' ' == c) || ('\t' == c); }
 static bool is_nul(char c) { return ('\0' == c); }
 
+// Execute a single command from a string
+static console_rc_t execute(char* cmd) {
+	// Try all recognisers in turn until one works.
+	const console_recogniser_func* rp = f_console_ctx.recognisers;
+	while (1) {
+		const console_recogniser_func r = (console_recogniser_func)pgm_read_word(rp++);
+		if (NULL == r)										// Exit at end.
+			break;
+		if (r(cmd))											// Call recogniser function, returns true on success.
+			return CONSOLE_RC_OK;	 						// Recogniser succeeded.
+	}
+	return CONSOLE_RC_ERROR_UNKNOWN_COMMAND;
+}
+
 // External functions.
-//
 
 void consoleInit(const console_recogniser_func* r_list) {
 	f_console_ctx.recognisers = r_list;
@@ -278,21 +291,16 @@ console_rc_t consoleProcess(char* str, char** current) {
 	// Establish a point where raise will go to when raise() is called.
 	console_rc_t command_rc = setjmp(f_console_ctx.jmpbuf); 
 	if (CONSOLE_RC_OK != command_rc) {	// On a raise we get here, normal program flow will return zero.
-		/* Note that no error is returned for any negative eror codes, which is used to implement comments with the
-			CONSOLE_RC_SIGNAL_IGNORE_TO_EOL code. */
-		if (command_rc < CONSOLE_RC_OK) 
-			return CONSOLE_RC_OK;
+		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really errors, used to implement things like comments. 
+			return CONSOLE_RC_OK;		// Fake no error to caller.
 
 		if (NULL != current)	// Update user pointer to point to last command executed, good for error messages.
 			*current = cmd;
-		return command_rc;
+		return command_rc;		// Return error code to caller. 
 	}
 
 	// Iterate over input, breaking into words.
 	while (1) {
-		const console_recogniser_func* rp;
-		console_recogniser_func r;
-		
 		while (is_whitespace(*str)) 									// Advance past leading spaces.
 			str += 1;
 
@@ -305,18 +313,11 @@ console_rc_t consoleProcess(char* str, char** current) {
 			str += 1;
 
 		if (!is_nul(*str))								// If there was NOT already a nul at the end of this string...
-			*str++ = '\0';							// Terminate white space delimited command and advance to next char.
+			*str++ = '\0';								// Terminate white space delimited command and advance to next char.
 
-		// Try all recognisers in turn until one works.
-		rp = f_console_ctx.recognisers;
-		while (1) {
-			if (NULL != (r = (console_recogniser_func)pgm_read_word(rp++))) {
-				if (r(cmd))											// Call recogniser function.
-					break;	 						// Recogniser succeeded.
-			}
-			else
-				return CONSOLE_RC_ERROR_UNKNOWN_COMMAND;
-		}
+		const console_rc_t rc = execute(cmd);			// Try to execute command.
+		if (CONSOLE_RC_OK != rc)						// Bail on error.
+			return rc;
 	}
 
 	return CONSOLE_RC_OK;
@@ -330,7 +331,7 @@ const char* consoleGetErrorDescription(console_rc_t err) {
 		case CONSOLE_RC_ERROR_DSTACK_OVERFLOW: return PSTR("stack overflow");
 		case CONSOLE_RC_ERROR_UNKNOWN_COMMAND: return PSTR("unknown command");
 		case CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW: return PSTR("input buffer overflow");
-		default: return PSTR("");
+		default: return PSTR("??");
 	}
 }
 

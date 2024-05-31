@@ -42,7 +42,10 @@
         <PostConnectCommands/>
         <StartupCommands/>
       </Debugger>
-      <PreBuild/>
+      <PreBuild>
+        <Command Enabled="yes">pwd</Command>
+        <Command Enabled="yes">$(ProjectPath)/../../src/console-mk.py $(ProjectPath)/main.cpp</Command>
+      </PreBuild>
       <PostBuild/>
       <CustomBuild Enabled="no">
         <RebuildCommand/>
