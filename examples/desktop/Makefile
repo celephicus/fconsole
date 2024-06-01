@@ -1,8 +1,31 @@
-.PHONY: clean All
+CC := g++
 
-All:
-	@echo "----------Building project:[ desktop - Debug ]----------"
-	@"$(MAKE)" -f  "desktop.mk" PreBuild && "$(MAKE)" -f  "desktop.mk"
+DEFINES := -DCONSOLE_USE_LOCAL_CONFIG
+CFLAGS := -g -O0 -Wall -Wpedantic -Wextra -Wconversion -O3
+
+SRCDIR = ../../src
+INCLUDES := -I. -I$(SRCDIR)
+HEADERS = console-config-local.h $(SRCDIR)/console.h
+TARGET := desktop
+
+# Run script to preprocess all source files to generate definitions of console commands. 
+$(shell $(SRCDIR)/console-mk.py main.cpp $(SRCDIR)/console.cpp)
+
+.PHONY: clean all 
+
+all: $(TARGET)
+
+$(TARGET): main.o console.o
+	$(CC) -o $@ main.o console.o
+
+#	$(SRCDIR)/console-mk.py $(SRCDIR)/console.cpp
+
+main.o: main.cpp $(HEADERS)  
+	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@	
+
+console.o: $(SRCDIR)/console.cpp $(HEADERS) 
+	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@	
+
 clean:
-	@echo "----------Cleaning project:[ desktop - Debug ]----------"
-	@"$(MAKE)" -f  "desktop.mk" clean
+	-rm -f *.o $(TARGET)
+

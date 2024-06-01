@@ -13,7 +13,7 @@ static bool console_cmds_user(char* cmd) {
 		case /** + **/ 0XB58E: console_binop(+); break;
 		case /** - **/ 0XB588: console_binop(-); break;
 		case /** NEGATE **/ 0X7A79: console_unop(-); break;
-		case /** RAISE **/ 0X4069: console_raise(console_u_pop()); break;
+		case /** RAISE **/ 0X4069: console_raise((console_rc_t)console_u_pop()); break;
 		case /** EXIT **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER_EXIT); break;
 		case /** # **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
 		default: return false;
@@ -34,7 +34,7 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 };
 
 static void prompt() {
-	fputs("\n>", stdout);
+	printf("\n>");
 }
 
 // Linux requires this to emulate TurboC getch(). Copied from Stackoverflow
@@ -55,13 +55,14 @@ int getch(void) {
 }
 
 int main(int argc, char **argv) {
+	(void)argc; (void)argv;
 	consoleInit(RECOGNISERS);							// Setup console.
-	fputs("\n\n" 
-	      "FConsole Example", stdout);
+	printf("\n\n" 
+	      "FConsole Example -- `exit' to quit.");
 	prompt();
 
 	while (1) {
-		const char c = getch();
+		const char c = (char)getch();
 		if (CONSOLE_INPUT_NEWLINE_CHAR != c)	// Don't echo newline.
 			putchar(c);
 		console_rc_t rc = consoleAccept(c);		// Add it to the input buffer.
