@@ -12,21 +12,21 @@
 // Is an integer type signed, works for chars as well.
 #define utilsIsTypeSigned(T_) (((T_)(-1)) < (T_)0)
 
-// And check for compatibility of the two cell types. If this is wrong so much will break in surprising ways.
-STATIC_ASSERT(sizeof(console_cell_t) == sizeof(console_ucell_t));
-STATIC_ASSERT(utilsIsTypeSigned(console_cell_t));
-STATIC_ASSERT(!utilsIsTypeSigned(console_ucell_t));
+// And check for compatibility of the two console integral types. If this is wrong so much will break in surprising ways.
+STATIC_ASSERT(sizeof(console_int_t) == sizeof(console_uint_t));
+STATIC_ASSERT(utilsIsTypeSigned(console_int_t));
+STATIC_ASSERT(!utilsIsTypeSigned(console_uint_t));
 
-// The cell type must be able to represent a pointer.
-STATIC_ASSERT(sizeof(void*) == sizeof(console_ucell_t));
+// The console type must be able to represent a pointer.
+STATIC_ASSERT(sizeof(void*) == sizeof(console_uint_t));
 
 // Unused static functions are OK. The linker will remove them.
 #pragma GCC diagnostic ignored "-Wunused-function"
 
 // Struct to hold the console interpreter's state.
 typedef struct {
-	console_cell_t dstack[CONSOLE_DATA_STACK_SIZE];	// Our stack, grows down in memory.
-	console_cell_t* sp;								// Stack pointer, points to topmost item. 
+	console_int_t dstack[CONSOLE_DATA_STACK_SIZE];	// Our stack, grows down in memory.
+	console_int_t* sp;								// Stack pointer, points to topmost item. 
 	jmp_buf jmpbuf;									// How we do aborts.
 	const console_recogniser_func* recognisers;		// List of recogniser functions in PROGMEM. 
 } console_context_t;
@@ -43,7 +43,7 @@ static console_context_t f_console_ctx;
 // State for consoleAccept(). Done seperately as if not used the linker will remove it.
 typedef struct {
 	char inbuf[CONSOLE_INPUT_BUFFER_SIZE + 1];
-	uint8_t inbidx;
+	uint_least8_t inbidx;
 } accept_context_t;
 static accept_context_t f_accept_context;
 
@@ -53,17 +53,17 @@ void console_raise(console_rc_t rc) {
 }
 
 // Error handling in commands.
-void console_verify_can_pop(uint8_t n) { if (!console_can_pop(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_UNDERFLOW); }
-void console_verify_can_push(uint8_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERROR_DSTACK_OVERFLOW); }
-void console_verify_bounds(uint_least8_t idx, uint_least8_t size) { if (idx >= size) console_raise(CONSOLE_RC_ERROR_INDEX_OUT_OF_RANGE); }
+void console_verify_can_pop(uint_least8_t n) { if (!console_can_pop(n)) console_raise(CONSOLE_RC_ERR_DSTK_UNF); }
+void console_verify_can_push(uint_least8_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERR_DSTK_OVF); }
+void console_verify_bounds(uint_least8_t idx, uint_least8_t size) { if (idx >= size) console_raise(CONSOLE_RC_ERR_BAD_IDX); }
 
 // Stack primitives.
-console_cell_t console_u_pick(uint8_t i)	{ return f_console_ctx.sp[i]; }
-console_cell_t& console_u_tos() 			{ console_verify_can_pop(1); return *f_console_ctx.sp; }
-console_cell_t& console_u_nos() 			{ console_verify_can_pop(2); return *(f_console_ctx.sp + 1); }
-console_cell_t console_u_depth() 			{ return (CONSOLE_STACKBASE - f_console_ctx.sp); }
-console_cell_t console_u_pop() 				{ console_verify_can_pop(1); return *(f_console_ctx.sp++); }
-void console_u_push(console_cell_t x) 		{ console_verify_can_push(1); *--f_console_ctx.sp = x; }
+console_int_t console_u_pick(uint_least8_t i)	{ return f_console_ctx.sp[i]; }
+console_int_t& console_u_tos() 			{ console_verify_can_pop(1); return *f_console_ctx.sp; }
+console_int_t& console_u_nos() 			{ console_verify_can_pop(2); return *(f_console_ctx.sp + 1); }
+console_int_t console_u_depth() 			{ return (CONSOLE_STACKBASE - f_console_ctx.sp); }
+console_int_t console_u_pop() 				{ console_verify_can_pop(1); return *(f_console_ctx.sp++); }
+void console_u_push(console_int_t x) 		{ console_verify_can_push(1); *--f_console_ctx.sp = x; }
 void console_u_clear()						{ f_console_ctx.sp = CONSOLE_STACKBASE; }
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
@@ -83,32 +83,32 @@ uint16_t console_hash(const char* str) {
 }
 
 // Convert a single character in range [0-9a-zA-Z] to a number up to 35. A large value (255) is returned on error.
-static uint8_t convert_digit(char c) {
+static uint_least8_t convert_digit(char c) {
 	if ((c >= '0') && (c <= '9'))
-		return (int8_t)c - '0';
+		return (uint_least8_t)c - '0';
 	else if ((c >= 'a') && (c <= 'z'))
-		return (int8_t)c -'a' + 10;
+		return (uint_least8_t)c -'a' + 10;
 	else if ((c >= 'A') && (c <= 'Z'))
-		return (int8_t)c -'A' + 10;
+		return (uint_least8_t)c -'A' + 10;
 	else
 		return 255;
 }
 
 // Convert an unsigned number of any base up to 36. Return true on success.
-static bool convert_number(console_ucell_t* number, console_cell_t base, const char* str) {
+static bool convert_number(console_uint_t* number, uint_least8_t base, const char* str) {
 	if ('\0' == *str)		// If string is empty then fail.
 		return false;
 
 	*number = 0;
 	while ('\0' != *str) {
-		const uint8_t digit = convert_digit(*str++);
+		const uint_least8_t digit = convert_digit(*str++);
 		if (digit >= base)
 			return false;		   /* Cannot convert with current base. */
 
-		const console_ucell_t old_number = *number;
+		const console_uint_t old_number = *number;
 		*number = *number * base + digit;
 		if (old_number > *number)		// Magnitude change signals overflow.
-			console_raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
+			console_raise(CONSOLE_RC_ERR_NUM_OVF);
 	}
 
 	return true;		// If we get here then it must have worked.
@@ -119,7 +119,7 @@ static bool convert_number(console_ucell_t* number, console_cell_t base, const c
 
 // Regogniser for signed/unsigned decimal numbers.
 bool console_r_number_decimal(char* cmd) {
-	console_ucell_t result;
+	console_uint_t result;
 	char sign;
 
 	/* Check leading character for sign. */
@@ -138,13 +138,13 @@ bool console_r_number_decimal(char* cmd) {
 	case '+':		/* Unsigned, already checked for overflow. */
 		break;
 	case ' ':		/* Signed positive number. */
-		if (result > (console_ucell_t)CONSOLE_CELL_MAX)
-			console_raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
+		if (result > (console_uint_t)CONSOLE_INT_MAX)
+			console_raise(CONSOLE_RC_ERR_NUM_OVF);
 		break;
 	case '-':		/* Signed negative number. */
-		if (result > ((console_ucell_t)CONSOLE_CELL_MIN))
-			console_raise(CONSOLE_RC_ERROR_NUMBER_OVERFLOW);
-		result = (console_ucell_t)-(console_cell_t)result;
+		if (result > ((console_uint_t)CONSOLE_INT_MIN))
+			console_raise(CONSOLE_RC_ERR_NUM_OVF);
+		result = (console_uint_t)-(console_int_t)result;
 		break;
 	}
 
@@ -158,12 +158,25 @@ bool console_r_number_hex(char* cmd) {
 	if ('$' != *cmd)
 		return false;
 
-	console_ucell_t result;
+	console_uint_t result;
 	if (!convert_number(&result, 16, &cmd[1]))
 		return false;
 
 	// Success.
 	console_u_push(result);
+	return true;
+}
+
+// Convert 2 hex digits.
+bool convert_2_hex(const char* s, uint8_t* num) {
+	const uint_least8_t digit_1 = convert_digit(s[0]);
+	if (digit_1 >= 16)
+		return false;
+
+	const uint_least8_t digit_2 = convert_digit(s[1]);
+	if (digit_2 >= 16)
+		return false;
+	*num = (digit_1 << 4) | digit_2;
 	return true;
 }
 
@@ -177,31 +190,26 @@ bool console_r_string(char* cmd) {
 
 	while ('\0' != *rp) {			// Iterate over all chars...
 		if ('\\' != *rp)			// Just copy all chars, the input routine makes sure that they are all printable. But
-			*wp++ = *rp;
+			*wp = *rp;
 		else {
 			rp += 1;				// On to next char.
 			switch (*rp) {
-				case 'n': *wp++ = '\n'; break;		// Common escapes.
-				case 'r': *wp++ = '\r'; break;
-				case '\0': *wp++ = ' '; goto exit;	// Trailing '\' is a space, so exit loop now.
+				case 'n': *wp = '\n'; break;		// Common escapes.
+				case 'r': *wp = '\r'; break;
+				case '\0': goto exit;				// A '\' with no character is ignored.
 				default: 							// Might be a hex character escape.
-				{
-					const uint8_t digit_1 = convert_digit(rp[0]); // A bit naughty, we might read beyond the end of the buffer
-					const uint8_t digit_2 = convert_digit(rp[1]);
-					if ((digit_1 < 16) && (digit_2 < 16)) {		// If a valid hex char...
-						*wp++ = (digit_1 << 4) | digit_2;
-						rp += 1;
-					}
+					if (convert_2_hex(rp, (uint8_t*)wp)) 	// Convert two hex digits.
+						rp += 1;					// It worked, consume extra char from input.
 					else
-						*wp++ = *rp;								// It's not, just copy the first char, this is how we do ' ' & '\'.
-				}
+						*wp = *rp;					// Not hex, just copy the first char, this is how we do ' ' & '\'.
 				break;
 			}
 		}
+		wp += 1;
 		rp += 1;
 	}
-exit:	*wp = '\0';						// Terminate string in input buffer.
-	console_u_push((console_cell_t)&cmd[0]);   	// Push address we started writing at.
+exit:	*wp = '\0';									// Terminate string in input buffer.
+	console_u_push((console_int_t)&cmd[0]);   		// Push address we started writing at.
 	return true;
 }
 
@@ -214,17 +222,13 @@ bool console_r_hex_string(char* cmd) {
 
 	unsigned char* out_ptr = (unsigned char*)cmd; // We write the converted number back into the input buffer.
 	while ('\0' != *cmd) {
-		const uint8_t digit_1 = convert_digit(*cmd++);
-		if (digit_1 >= 16)
-			return false;
-
-		const uint8_t digit_2 = convert_digit(*cmd++);
-		if (digit_2 >= 16)
-			return false;
-		*out_ptr++ = (digit_1 << 4) | digit_2;
+		if (!convert_2_hex(cmd, out_ptr))	// Do conversion.
+			return false;					// Bail on error;
+		cmd += 2;
+		out_ptr += 1;
 	}
-	*len = out_ptr - len - 1; 		// Store length, looks odd, using len as a pointer and a value.
-	console_u_push((console_cell_t)len);	// Push _address_.
+	*len = out_ptr - len - 1; 				// Store length, looks odd, using len as a pointer and a value.
+	console_u_push((console_int_t)len);		// Push _address_.
 	return true;
 }
 
@@ -246,13 +250,13 @@ bool console_cmds_builtin(char* cmd) {
 
 // Example output routines.
 #if 0
-void consolePrint(uint8_t opt, console_cell_t x) {
+void consolePrint(uint_least8_t opt, console_int_t x) {
 	switch (opt & 0x7f) {
 		case CONSOLE_PRINT_NEWLINE:		printf(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return;
 		default:						/* ignore */; return;
 		case CONSOLE_PRINT_SIGNED:		printf("%d ", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	printf("+%u ", (console_ucell_t)x); break;
-		case CONSOLE_PRINT_HEX:			printf("$%4x ", (console_ucell_t)x); break;
+		case CONSOLE_PRINT_UNSIGNED:	printf("+%u ", (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX:			printf("$%4x ", (console_uint_t)x); break;
 		case CONSOLE_PRINT_STR:			/* fall through... */
 		case CONSOLE_PRINT_STR_P:		puts((const char*)x); break;
 		case CONSOLE_PRINT_CHAR:		putc((char)x); break;
@@ -275,7 +279,7 @@ static console_rc_t execute(char* cmd) {
 		if (r(cmd))											// Call recogniser function, returns true on success.
 			return CONSOLE_RC_OK;	 						// Recogniser succeeded.
 	}
-	return CONSOLE_RC_ERROR_UNKNOWN_COMMAND;
+	return CONSOLE_RC_ERR_BAD_CMD;
 }
 
 // External functions.
@@ -287,18 +291,13 @@ void consoleInit(const console_recogniser_func* r_list) {
 
 console_rc_t consoleProcess(char* str, char** current) {
 	char* cmd;
+	console_rc_t command_rc;
 	
 	// Establish a point where raise will go to when raise() is called.
-	console_rc_t command_rc = setjmp(f_console_ctx.jmpbuf); 
-	if (CONSOLE_RC_OK != command_rc) {	// On a raise we get here, normal program flow will return zero.
-		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really errors, used to implement things like comments. 
-			return CONSOLE_RC_OK;		// Fake no error to caller.
-
-		if (NULL != current)	// Update user pointer to point to last command executed, good for error messages.
-			*current = cmd;
-		return command_rc;		// Return error code to caller. 
-	}
-
+	command_rc = setjmp(f_console_ctx.jmpbuf); 
+	if (CONSOLE_RC_OK != command_rc) 	// On a raise we get here, normal program flow will return zero.
+		goto error;						// Handle error and bail.
+		
 	// Iterate over input, breaking into words.
 	while (1) {
 		while (is_whitespace(*str)) 									// Advance past leading spaces.
@@ -315,9 +314,15 @@ console_rc_t consoleProcess(char* str, char** current) {
 		if (!is_nul(*str))								// If there was NOT already a nul at the end of this string...
 			*str++ = '\0';								// Terminate white space delimited command and advance to next char.
 
-		const console_rc_t rc = execute(cmd);			// Try to execute command.
-		if (CONSOLE_RC_OK != rc)						// Bail on error.
-			return rc;
+		command_rc = execute(cmd);						// Try to execute command.
+		if (CONSOLE_RC_OK != command_rc) {				// Bail on error.
+error:		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really errors, used to implement things like comments. 
+				return CONSOLE_RC_OK;		// Fake no error to caller.
+
+			if (NULL != current)	// Update user pointer to point to last command executed, good for error messages.
+				*current = cmd;
+			return command_rc;		// Return error code to caller. 
+		}
 	}
 
 	return CONSOLE_RC_OK;
@@ -326,11 +331,12 @@ console_rc_t consoleProcess(char* str, char** current) {
 // Print description of error code.
 const char* consoleGetErrorDescription(console_rc_t err) {
 	switch(err) {
-		case CONSOLE_RC_ERROR_NUMBER_OVERFLOW: return PSTR("number overflow");
-		case CONSOLE_RC_ERROR_DSTACK_UNDERFLOW: return PSTR("stack underflow");
-		case CONSOLE_RC_ERROR_DSTACK_OVERFLOW: return PSTR("stack overflow");
-		case CONSOLE_RC_ERROR_UNKNOWN_COMMAND: return PSTR("unknown command");
-		case CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW: return PSTR("input buffer overflow");
+		case CONSOLE_RC_ERR_NUM_OVF: 	return PSTR("number overflow");
+		case CONSOLE_RC_ERR_DSTK_UNF: 	return PSTR("stack underflow");
+		case CONSOLE_RC_ERR_DSTK_OVF: 	return PSTR("stack overflow");
+		case CONSOLE_RC_ERR_BAD_CMD: 	return PSTR("unknown command");
+		case CONSOLE_RC_ERR_ACC_OVF: 	return PSTR("input buffer overflow");
+		case CONSOLE_RC_ERR_BAD_IDX:	return PSTR("index out of range");
 		default: return PSTR("??");
 	}
 }
@@ -346,19 +352,19 @@ console_rc_t consoleAccept(char c) {
 	if (CONSOLE_INPUT_NEWLINE_CHAR == c) {
 		f_accept_context.inbuf[f_accept_context.inbidx] = '\0';
 		consoleAcceptClear();
-		return overflow ? CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW : CONSOLE_RC_OK;
+		return overflow ? CONSOLE_RC_ERR_ACC_OVF : CONSOLE_RC_OK;
 	}
 	else {
 		if ((c >= ' ') && (c < (char)0x7f)) {	 // Is is printable?
 			if (!overflow)
 				f_accept_context.inbuf[f_accept_context.inbidx++] = c;
 		}
-		return CONSOLE_RC_STATUS_ACCEPT_PENDING;
+		return CONSOLE_RC_STAT_ACC_PEND;
 	}
 }
 char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
 
 // Test functions
-uint8_t consoleStackDepth() { return console_u_depth(); }
-console_cell_t consoleStackPick(uint8_t i) { return console_u_pick(i); }
+uint_least8_t consoleStackDepth() { return console_u_depth(); }
+console_int_t consoleStackPick(uint_least8_t i) { return console_u_pick(i); }
 void consoleReset() { console_u_clear(); }

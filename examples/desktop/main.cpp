@@ -6,7 +6,7 @@
 #include "console.h"
 
 enum {
-	CONSOLE_RC_ERROR_USER_EXIT = CONSOLE_RC_ERROR_USER, // Exit from program
+	CONSOLE_RC_ERR_USER_EXIT = CONSOLE_RC_ERR_USER, // Exit from program
 };
 static bool console_cmds_user(char* cmd) {
 	switch (console_hash(cmd)) {
@@ -14,8 +14,8 @@ static bool console_cmds_user(char* cmd) {
 		case /** - **/ 0XB588: console_binop(-); break;
 		case /** NEGATE **/ 0X7A79: console_unop(-); break;
 		case /** RAISE **/ 0X4069: console_raise(console_u_pop()); break;
-		case /** EXIT **/ 0XC745: console_raise(CONSOLE_RC_ERROR_USER_EXIT); break;
-		case /** # **/ 0XB586: console_raise(CONSOLE_RC_STATUS_IGNORE_TO_EOL); break;
+		case /** EXIT **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER_EXIT); break;
+		case /** # **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
 		default: return false;
 	}
 	return true;
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 			fputs(" -> ", stdout); 				// Seperator string for output.
 			rc = consoleProcess(consoleAcceptBuffer(), &cmd);	// Process input string from input buffer filled by accept and record error code.
 			if (CONSOLE_RC_OK != rc) {			// If all went well then we get an OK status code.
-				if (CONSOLE_RC_ERROR_USER_EXIT == rc) {
+				if (CONSOLE_RC_ERR_USER_EXIT == rc) {
 					puts("Bye...");
 					break;
 				}
@@ -82,13 +82,13 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-void consolePrint(uint8_t opt, console_cell_t x) {
+void consolePrint(uint_least8_t opt, console_int_t x) {
 	switch (opt & 0x7f) {
 		case CONSOLE_PRINT_NEWLINE:		printf("\n"); (void)x; return; 				// No separator.
 		default:						(void)x; return;							// Ignore, print nothing.
 		case CONSOLE_PRINT_SIGNED:		printf("%ld", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	printf("+%lu", (console_ucell_t)x); break;
-		case CONSOLE_PRINT_HEX:			printf("$%lx", (console_ucell_t)x); break;
+		case CONSOLE_PRINT_UNSIGNED:	printf("+%lu", (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX:			printf("$%lx", (console_uint_t)x); break;
 		case CONSOLE_PRINT_STR_P:		/* Fall through... */
 		case CONSOLE_PRINT_STR:			fputs((const char*)x, stdout); break;
 		case CONSOLE_PRINT_CHAR:		putchar((char)x); break;

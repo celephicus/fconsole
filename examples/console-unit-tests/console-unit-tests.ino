@@ -52,7 +52,7 @@ void setup() {
 
 	Serial.begin(115200);
 	Serial.println();
-	Serial.println(mk_msg(PSTR("Arduino Console Unit Tests: %u bit."), 8 * sizeof(console_cell_t)));
+	Serial.println(mk_msg(PSTR("Arduino Console Unit Tests: %u bit."), 8 * sizeof(console_int_t)));
 }
 
 // Test code from adapted from minunit: http://www.jera.com/techinfo/jtns/jtn002.html
@@ -65,7 +65,7 @@ int tests_run, tests_fail;
 #define mu_assert_equal_str(val_, expected_) do { if (0 != strcmp((val_), (expected_))) { tests_fail++; return mk_msg(PSTR("%s != %s; expected `%s', got `%s'"), mkstr(val_), mkstr(expected_), expected_, val_); } } while (0)
 #define mu_assert_equal_int(val_, expected_) do { if ((int)(val_) != (int)(expected_))  { tests_fail++; return mk_msg(PSTR("%s != %s; expected `%d', got `%d'"), mkstr(val_), mkstr(expected_), expected_, val_); } } while (0)
 
-char* check_print(uint8_t opt, console_cell_t x, const char* output) {
+char* check_print(uint8_t opt, console_int_t x, const char* output) {
 	o_stream.clear();									// Clear output string of contents from previous test.. 
 	consolePrint(opt, x);
 	mu_assert_equal_str(o_stream.get(), output);	// Verify output string...
@@ -86,10 +86,10 @@ char* check_console(const char* input, const char* output, console_rc_t rc_expec
 	va_list ap;
 	va_start(ap, depth_expected);
 	while (depth_expected-- > 0) {
-		if (consoleStackPick(depth_expected) != va_arg(ap, console_cell_t)) { 
+		if (consoleStackPick(depth_expected) != va_arg(ap, console_int_t)) { 
 			sprintf(msg, " stack: "); 
 			for (uint8_t i = 0; i < consoleStackDepth(); i += 1) 
-				sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_CELL " ", consoleStackPick(i)); 
+				sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_INT " ", consoleStackPick(i)); 
 			tests_fail++;
 			return msg;
 		}
@@ -132,7 +132,7 @@ void loop() {
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 						0, 				"0 "));
 	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 					0, 				"+0 "));
 
-	if (sizeof(console_cell_t) == 2) {
+	if (sizeof(console_int_t) == 2) {
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					32767, 			"32767 "));
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					-32768, 		"-32768 "));
 		mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED,					0xffff, 		"+65535 "));
@@ -140,7 +140,7 @@ void loop() {
 		mu_run_test(check_print(CONSOLE_PRINT_HEX,						0, 				"$0000 "));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,	0, 				"$0000"));
 	}
-	else if (sizeof(console_cell_t) == 4) {	
+	else if (sizeof(console_int_t) == 4) {	
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					2147483647L, 	"2147483647 "));
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					-2147483648L, 	"-2147483648 "));
 		mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 				0xffffffff, 	"+4294967295 "));
@@ -149,73 +149,73 @@ void loop() {
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,	0, 				"$00000000"));
 	}
 	else
-		mu_run_test("console_cell_t not 16 or 32 bit!");
+		mu_run_test("console_int_t not 16 or 32 bit!");
 
-	mu_run_test(check_print(CONSOLE_PRINT_STR, (console_cell_t)"hello", "hello "));
-	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("hello"), "hello "));
+	mu_run_test(check_print(CONSOLE_PRINT_STR, (console_int_t)"hello", "hello "));
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_int_t)PSTR("hello"), "hello "));
 	mu_run_test(check_print(CONSOLE_PRINT_CHAR, 'x', "x "));
 
 	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE|CONSOLE_PRINT_NO_SEP,		1235, CONSOLE_OUTPUT_NEWLINE_STR));  // NO_SEP has no effect. 
 	mu_run_test(check_print((CONSOLE_PRINT_NO_SEP-1)|CONSOLE_PRINT_NO_SEP,	1235, ""));			// No output.
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED|CONSOLE_PRINT_NO_SEP,		0, "0"));
 	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED|CONSOLE_PRINT_NO_SEP,	0, "+0"));
-	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP,			(console_cell_t)"hello", "hello"));
-	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP,		(console_cell_t)PSTR("hello"), "hello"));
-	mu_run_test(check_print(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP,		(console_cell_t)'x', "x"));
+	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP,			(console_int_t)"hello", "hello"));
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP,		(console_int_t)PSTR("hello"), "hello"));
+	mu_run_test(check_print(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP,		(console_int_t)'x', "x"));
 #endif
 
 #if (TEST_BATCH == 0) || (TEST_BATCH == 2)	// Command parsing
 	mu_run_test(check_console("", "",						CONSOLE_RC_OK,				0));
 	mu_run_test(check_console(" ", "",						CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("\t", "",						CONSOLE_RC_OK,				0));
-	mu_run_test(check_console("foo", "",					CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
+	mu_run_test(check_console("foo", "",					CONSOLE_RC_ERR_UNKNOWN_COMMAND,	0));
 	
 	// Check decimal number parser.
-	mu_run_test(check_console("+a", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// We could have a command `+a' if we wanted. It's just not a number.
-	mu_run_test(check_console("-f", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// Likewise `-f' could be a command, but it's not a number. 
-	mu_run_test(check_console("0", "",						CONSOLE_RC_OK,				1, (console_cell_t)0));
-	mu_run_test(check_console("+0", "",						CONSOLE_RC_OK,				1, (console_cell_t)0));
-	mu_run_test(check_console("1", "",						CONSOLE_RC_OK,				1, (console_cell_t)1));
-	mu_run_test(check_console("1a", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND, 0));		// Flagged as unknown command, even though it's really a bad base. We could have a command `1a'. 
-	if (sizeof(console_cell_t) == 2) {
+	mu_run_test(check_console("+a", "",						CONSOLE_RC_ERR_UNKNOWN_COMMAND,	0));	// We could have a command `+a' if we wanted. It's just not a number.
+	mu_run_test(check_console("-f", "",						CONSOLE_RC_ERR_UNKNOWN_COMMAND,	0));	// Likewise `-f' could be a command, but it's not a number. 
+	mu_run_test(check_console("0", "",						CONSOLE_RC_OK,				1, (console_int_t)0));
+	mu_run_test(check_console("+0", "",						CONSOLE_RC_OK,				1, (console_int_t)0));
+	mu_run_test(check_console("1", "",						CONSOLE_RC_OK,				1, (console_int_t)1));
+	mu_run_test(check_console("1a", "",						CONSOLE_RC_ERR_UNKNOWN_COMMAND, 0));		// Flagged as unknown command, even though it's really a bad base. We could have a command `1a'. 
+	if (sizeof(console_int_t) == 2) {
 		mu_run_test(check_console("32767", "",				CONSOLE_RC_OK,				1, 32767));
 		mu_run_test(check_console("-32768", "",				CONSOLE_RC_OK,				1, -32768));
-		mu_run_test(check_console("32768", "",				CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
-		mu_run_test(check_console("-32769", "",				CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("32768", "",				CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("-32769", "",				CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
 		mu_run_test(check_console("+32768", "",				CONSOLE_RC_OK,				1, 32768));
 		mu_run_test(check_console("+65535", "",				CONSOLE_RC_OK,				1, 65535));
-		mu_run_test(check_console("+65536", "",				CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("+65536", "",				CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
 	}
-	else if (sizeof(console_cell_t) == 4) {
+	else if (sizeof(console_int_t) == 4) {
 		mu_run_test(check_console("2147483647", "",			CONSOLE_RC_OK,				1, 2147483647L));
 		mu_run_test(check_console("-2147483648", "",		CONSOLE_RC_OK,				1, -2147483648L));
-		mu_run_test(check_console("2147483648", "",			CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
-		mu_run_test(check_console("-2147483649", "",		CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("2147483648", "",			CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("-2147483649", "",		CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
 		mu_run_test(check_console("+2147483647", "",		CONSOLE_RC_OK,				1, 2147483647L));
 		mu_run_test(check_console("+4294967295", "",		CONSOLE_RC_OK,				1, 4294967295));
-		mu_run_test(check_console("+4294967296", "",		CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("+4294967296", "",		CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
 	}
 	else
-		mu_run_test("console_cell_t not 16 or 32 bit!");
+		mu_run_test("console_int_t not 16 or 32 bit!");
 #endif
 #if (TEST_BATCH == 0) || (TEST_BATCH == 3)
 	// Check hex number parser.
-	mu_run_test(check_console("$g", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));	// We could have this command if we wanted. It's just not a number.
-	mu_run_test(check_console("$", "",						CONSOLE_RC_ERROR_UNKNOWN_COMMAND,	0));
-	mu_run_test(check_console("$1", "",						CONSOLE_RC_OK,				1, (console_cell_t)1));
-	if (sizeof(console_cell_t) == 2) {
+	mu_run_test(check_console("$g", "",						CONSOLE_RC_ERR_UNKNOWN_COMMAND,	0));	// We could have this command if we wanted. It's just not a number.
+	mu_run_test(check_console("$", "",						CONSOLE_RC_ERR_UNKNOWN_COMMAND,	0));
+	mu_run_test(check_console("$1", "",						CONSOLE_RC_OK,				1, (console_int_t)1));
+	if (sizeof(console_int_t) == 2) {
 		mu_run_test(check_console("$FFFF", "",					CONSOLE_RC_OK,				1, 0xffff));
-		mu_run_test(check_console("$10000", "",					CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("$10000", "",					CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
 	}
-	else if (sizeof(console_cell_t) == 4) {
+	else if (sizeof(console_int_t) == 4) {
 		mu_run_test(check_console("$FFFFFFFF", "",					CONSOLE_RC_OK,				1, 0xffffffff));
-		mu_run_test(check_console("$100000000", "",					CONSOLE_RC_ERROR_NUMBER_OVERFLOW,	0));
+		mu_run_test(check_console("$100000000", "",					CONSOLE_RC_ERR_NUMBER_OVERFLOW,	0));
 	}
 	else
-		mu_run_test("console_cell_t not 16 or 32 bit!");
+		mu_run_test("console_int_t not 16 or 32 bit!");
 	
 	// Check string parser & string printer.
-	mu_run_test(check_console(".\"", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console(".\"", "",					CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
 	mu_run_test(check_console("\" .\"", " ",				CONSOLE_RC_OK,				0));			// Zero length string.
 	mu_run_test(check_console("\"\\\\ .\"", "\\ ",			CONSOLE_RC_OK,				0));			// Single backslash.
 	mu_run_test(check_console("\"q .\"", "q ",				CONSOLE_RC_OK,				0));
@@ -224,12 +224,12 @@ void loop() {
 #endif
 #if (TEST_BATCH == 0) || (TEST_BATCH == 4)
 	// Number printing.
-	mu_run_test(check_console(".", "",						CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console(".", "",						CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
 	mu_run_test(check_console("0 .", "0 ",					CONSOLE_RC_OK,				0));
-	mu_run_test(check_console("U.", "",						CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console("U.", "",						CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
 	mu_run_test(check_console("0 U.", "+0 ",				CONSOLE_RC_OK,				0));
-	mu_run_test(check_console("$.", "",						CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	if (sizeof(console_cell_t) == 2) {
+	mu_run_test(check_console("$.", "",						CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
+	if (sizeof(console_int_t) == 2) {
 		mu_run_test(check_console("32767 .", "32767 ",			CONSOLE_RC_OK,				0));
 		mu_run_test(check_console("-32768 .", "-32768 ",		CONSOLE_RC_OK,				0));
 		mu_run_test(check_console("+65535 U.", "+65535 ",		CONSOLE_RC_OK,				0));
@@ -240,7 +240,7 @@ void loop() {
 		mu_run_test(check_console("$FFFF $.", "$FFFF ",			CONSOLE_RC_OK,				0));
 		mu_run_test(check_console("$AF19 $.", "$AF19 ",			CONSOLE_RC_OK,				0));
 	}
-	else if (sizeof(console_cell_t) == 4) {
+	else if (sizeof(console_int_t) == 4) {
 		mu_run_test(check_console("2147483647 .", "2147483647 ",			CONSOLE_RC_OK,				0));
 		mu_run_test(check_console("-2147483648 .", "-2147483648 ",		CONSOLE_RC_OK,				0));
 		mu_run_test(check_console("+4294967295 U.", "+4294967295 ",		CONSOLE_RC_OK,				0));
@@ -252,32 +252,32 @@ void loop() {
 		mu_run_test(check_console("$DE32AF19 $.", "$DE32AF19 ",			CONSOLE_RC_OK,				0));
 	}
 	else
-		mu_run_test("console_cell_t not 16 or 32 bit!");
+		mu_run_test("console_int_t not 16 or 32 bit!");
 
 	// Stack over/under flow.
-	mu_run_test(check_console("DROP", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	mu_run_test(check_console("1 2 3 4 5 6 7 8 9 ", "",		CONSOLE_RC_ERROR_DSTACK_OVERFLOW,	8, (console_cell_t)1, (console_cell_t)2, (console_cell_t)3, (console_cell_t)4, (console_cell_t)5, (console_cell_t)6, (console_cell_t)7, (console_cell_t)8));
+	mu_run_test(check_console("DROP", "",					CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console("1 2 3 4 5 6 7 8 9 ", "",		CONSOLE_RC_ERR_DSTACK_OVERFLOW,	8, (console_int_t)1, (console_int_t)2, (console_int_t)3, (console_int_t)4, (console_int_t)5, (console_int_t)6, (console_int_t)7, (console_int_t)8));
 #endif
 #if (TEST_BATCH == 0) || (TEST_BATCH == 5)
 	// Commands
-	mu_run_test(check_console("1 2 DROP", "",				CONSOLE_RC_OK,				1, (console_cell_t)1));
-	mu_run_test(check_console("1 2 drop", "",				CONSOLE_RC_OK,				1, (console_cell_t)1));
-	mu_run_test(check_console("\"HASH HASH", "",			CONSOLE_RC_OK,				1, (console_cell_t)0x90b7));
-	mu_run_test(check_console("\"hash HASH", "",			CONSOLE_RC_OK,				1, (console_cell_t)0x90b7));
+	mu_run_test(check_console("1 2 DROP", "",				CONSOLE_RC_OK,				1, (console_int_t)1));
+	mu_run_test(check_console("1 2 drop", "",				CONSOLE_RC_OK,				1, (console_int_t)1));
+	mu_run_test(check_console("\"HASH HASH", "",			CONSOLE_RC_OK,				1, (console_int_t)0x90b7));
+	mu_run_test(check_console("\"hash HASH", "",			CONSOLE_RC_OK,				1, (console_int_t)0x90b7));
 	mu_run_test(check_console("1 2 CLEAR", "",				CONSOLE_RC_OK,				0));
 
 	// User commands.
-	mu_run_test(check_console("1 +", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	mu_run_test(check_console("+", "",						CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	mu_run_test(check_console("1 2 +", "",					CONSOLE_RC_OK,				1, (console_cell_t)3));
-	mu_run_test(check_console("1 -", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	mu_run_test(check_console("-", "",						CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	0));
-	mu_run_test(check_console("1 2 -", "",					CONSOLE_RC_OK,				1, (console_cell_t)-1));
-	mu_run_test(check_console("NEGATE", "",					CONSOLE_RC_ERROR_DSTACK_UNDERFLOW,	(console_cell_t)0));
-	mu_run_test(check_console("1 NEGATE", "",				CONSOLE_RC_OK,				1, (console_cell_t)-1));
+	mu_run_test(check_console("1 +", "",					CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console("+", "",						CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console("1 2 +", "",					CONSOLE_RC_OK,				1, (console_int_t)3));
+	mu_run_test(check_console("1 -", "",					CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console("-", "",						CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	0));
+	mu_run_test(check_console("1 2 -", "",					CONSOLE_RC_OK,				1, (console_int_t)-1));
+	mu_run_test(check_console("NEGATE", "",					CONSOLE_RC_ERR_DSTACK_UNDERFLOW,	(console_int_t)0));
+	mu_run_test(check_console("1 NEGATE", "",				CONSOLE_RC_OK,				1, (console_int_t)-1));
 	
 	// Comments
-	mu_run_test(check_console("1 2 # 3 4", "",				CONSOLE_RC_OK,				2, (console_cell_t)1, (console_cell_t)2));
+	mu_run_test(check_console("1 2 # 3 4", "",				CONSOLE_RC_OK,				2, (console_int_t)1, (console_int_t)2));
 #endif
 #if (TEST_BATCH == 0) || (TEST_BATCH == 6)
 	// Test Accept
@@ -285,8 +285,8 @@ void loop() {
 	mu_run_test(check_accept(1,								1,								CONSOLE_RC_OK));
 	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE-1,	CONSOLE_INPUT_BUFFER_SIZE-1,	CONSOLE_RC_OK));
 	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_OK));
-	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+1,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW));
-	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+2,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW));
+	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+1,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACCEPT_BUFFER_OVERFLOW));
+	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+2,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACCEPT_BUFFER_OVERFLOW));
 #endif
 
 	Serial.println(mk_msg(PSTR("Tests run: %d, failed: %d."), tests_run, tests_fail));

@@ -18,9 +18,9 @@ extern "C" {
 
 /* Get max/min for types. This only works because we assume two's complement representation 
  * and we have checked that the signed & unsigned types are compatible. */
-#define CONSOLE_UCELL_MAX (~(console_ucell_t)(0))
-#define CONSOLE_CELL_MAX ((console_cell_t)(CONSOLE_UCELL_MAX >> 1))
-#define CONSOLE_CELL_MIN ((console_cell_t)(~(CONSOLE_UCELL_MAX >> 1)))
+#define CONSOLE_UINT_MAX (~(console_uint_t)(0))
+#define CONSOLE_INT_MAX ((console_int_t)(CONSOLE_UINT_MAX >> 1))
+#define CONSOLE_INT_MIN ((console_int_t)(~(CONSOLE_UINT_MAX >> 1)))
 
 /* Recognisers are little parser functions that can turn a string into a value or values that are pushed onto the stack. They return
 	false if they cannot parse the input string. If they do parse it, they might call raise() if they cannot push a value onto the stack. */
@@ -42,7 +42,7 @@ enum {
 	CONSOLE_PRINT_CHAR,			// Print second arg as char, with trailing space.
 	CONSOLE_PRINT_NO_SEP = 0x80	// AND with option to _NOT_ print a trailing space.
 };
-void consolePrint(uint8_t opt, console_cell_t x);
+void consolePrint(uint_least8_t opt, console_int_t x);
 
 // Prototypes for various recogniser functions.
 
@@ -68,21 +68,21 @@ bool console_cmds_builtin(char* cmd);
 /* Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative values are more like status codes that
 	do not indicate an error. */
 enum {
-	CONSOLE_RC_OK =								0,	// Returned by consoleProcess() for no errors and by consoleAccept() for a newline with no overflow.
+	CONSOLE_RC_OK =				0,	// Returned by consoleProcess() for no errors and by consoleAccept() for a newline with no overflow.
 
 	// Errors: something has gone wrong...
-	CONSOLE_RC_ERROR_NUMBER_OVERFLOW =			1,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds,
-	CONSOLE_RC_ERROR_DSTACK_UNDERFLOW =			2,	// Stack underflowed (attempt to pop or examine too many items).
-	CONSOLE_RC_ERROR_DSTACK_OVERFLOW =			3,	// Stack overflowed (attempt to push too many items).
-	CONSOLE_RC_ERROR_UNKNOWN_COMMAND =			4,	// A command or value was not recognised.
-	CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW =	5,	// Accept input buffer has been sent more characters than it can hold. Only returned by consoleAccept().
-	CONSOLE_RC_ERROR_INDEX_OUT_OF_RANGE =		6,	// Index out of range.
-	CONSOLE_RC_ERROR_USER,							// Error codes available for the user.
+	CONSOLE_RC_ERR_NUM_OVF =	1,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds,
+	CONSOLE_RC_ERR_DSTK_UNF =	2,	// Stack underflowed (attempt to pop or examine too many items).
+	CONSOLE_RC_ERR_DSTK_OVF =	3,	// Stack overflowed (attempt to push too many items).
+	CONSOLE_RC_ERR_BAD_CMD =	4,	// A command or value was not recognised.
+	CONSOLE_RC_ERR_ACC_OVF =	5,	// Accept buffer has been sent more characters than it can hold. Only returned by consoleAccept().
+	CONSOLE_RC_ERR_BAD_IDX =	6,	// Index out of range.
+	CONSOLE_RC_ERR_USER,			// Error codes available for the user.
 
 	// Status...
-	CONSOLE_RC_STATUS_IGNORE_TO_EOL =			-1,	// Internal signal used to implement comments.
-	CONSOLE_RC_STATUS_ACCEPT_PENDING =			-2,	// Only returned by consoleAccept() to signal that it is still accepting characters.
-	CONSOLE_RC_STATUS_USER =					-3	// Status codes available for the user.
+	CONSOLE_RC_STAT_IGN_EOL =	-1,	// Internal signal used to implement comments.
+	CONSOLE_RC_STAT_ACC_PEND =	-2,	// Only returned by consoleAccept() to signal that it is still accepting characters.
+	CONSOLE_RC_STAT_USER =		-3	// Status codes available for the user.
 };
 
 // Type for a console API call status code.
@@ -118,16 +118,16 @@ void console_verify_can_push(uint_least8_t n);
 void console_verify_bounds(uint_least8_t idx, uint_least8_t size);
 
 // Stack primitives.
-console_cell_t console_u_pick(uint8_t i);
-console_cell_t& console_u_tos();
-console_cell_t& console_u_nos();
-console_cell_t console_u_depth();
-console_cell_t console_u_pop();
-void console_u_push(console_cell_t x);
+console_int_t console_u_pick(uint_least8_t i);
+console_int_t& console_u_tos();
+console_int_t& console_u_nos();
+console_int_t console_u_depth();
+console_int_t console_u_pop();
+void console_u_push(console_int_t x);
 void console_u_clear();
 
 /* Some helper macros for commands. */
-#define console_binop(op_)	{ const console_cell_t rhs = console_u_pop(); console_u_tos() = console_u_tos() op_ rhs; } 	// Implement a binary operator.
+#define console_binop(op_)	{ const console_int_t rhs = console_u_pop(); console_u_tos() = console_u_tos() op_ rhs; } 	// Implement a binary operator.
 #define console_unop(op_)	{ console_u_tos() = op_ console_u_tos(); }											// Implement a unary operator.
 
 // Following functions are for testing only.
@@ -137,10 +137,10 @@ void console_u_clear();
 char* consoleAcceptBuffer();
 
 // Return depth of stack, useful for testing.
-uint8_t consoleStackDepth();
+uint_least8_t consoleStackDepth();
 
 // Return stack values from the top down, if you go beyond (depth-1) you might read outside valid memory.
-console_cell_t consoleStackPick(uint8_t i);
+console_int_t consoleStackPick(uint_least8_t i);
 
 /* Resets the state of the console to what it would be after initialisation. Note does not affect the state of accept.
 	Useful for testing. */
