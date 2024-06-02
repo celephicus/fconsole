@@ -9,7 +9,7 @@ HEADERS = console-config-local.h $(SRCDIR)/console.h
 TARGET := desktop
 
 # Run script to preprocess all source files to generate definitions of console commands. 
-$(shell $(SRCDIR)/console-mk.py main.cpp $(SRCDIR)/console.cpp)
+$(shell ./prebuild.sh)
 
 .PHONY: clean all 
 

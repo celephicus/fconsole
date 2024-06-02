@@ -121,7 +121,7 @@ void console_verify_bounds(uint_least8_t idx, uint_least8_t size);
 console_int_t console_u_pick(uint_least8_t i);
 console_int_t& console_u_tos();
 console_int_t& console_u_nos();
-console_int_t console_u_depth();
+int_least8_t console_u_depth();
 console_int_t console_u_pop();
 void console_u_push(console_int_t x);
 void console_u_clear();

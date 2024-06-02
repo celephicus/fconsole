@@ -61,7 +61,7 @@ void console_verify_bounds(uint_least8_t idx, uint_least8_t size) { if (idx >= s
 console_int_t console_u_pick(uint_least8_t i)	{ return f_console_ctx.sp[i]; }
 console_int_t& console_u_tos() 			{ console_verify_can_pop(1); return *f_console_ctx.sp; }
 console_int_t& console_u_nos() 			{ console_verify_can_pop(2); return *(f_console_ctx.sp + 1); }
-console_int_t console_u_depth() 			{ return (CONSOLE_STACKBASE - f_console_ctx.sp); }
+int_least8_t console_u_depth() 			{ return (int_least8_t)(CONSOLE_STACKBASE - f_console_ctx.sp); }
 console_int_t console_u_pop() 				{ console_verify_can_pop(1); return *(f_console_ctx.sp++); }
 void console_u_push(console_int_t x) 		{ console_verify_can_push(1); *--f_console_ctx.sp = x; }
 void console_u_clear()						{ f_console_ctx.sp = CONSOLE_STACKBASE; }
@@ -227,7 +227,7 @@ bool console_r_hex_string(char* cmd) {
 		cmd += 2;
 		out_ptr += 1;
 	}
-	*len = out_ptr - len - 1; 				// Store length, looks odd, using len as a pointer and a value.
+	*len = (unsigned char)(out_ptr - len) - 1; 				// Store length, looks odd, using len as a pointer and a value.
 	console_u_push((console_int_t)len);		// Push _address_.
 	return true;
 }
@@ -290,29 +290,30 @@ void consoleInit(const console_recogniser_func* r_list) {
 }
 
 console_rc_t consoleProcess(char* str, char** current) {
-	char* cmd;
+	char* volatile cmd;				// Necessary to avoid warning from setjmp clobber.
+	char* volatile vstr = str;
 	console_rc_t command_rc;
 	
 	// Establish a point where raise will go to when raise() is called.
-	command_rc = setjmp(f_console_ctx.jmpbuf); 
+	command_rc = (console_rc_t)setjmp(f_console_ctx.jmpbuf); 
 	if (CONSOLE_RC_OK != command_rc) 	// On a raise we get here, normal program flow will return zero.
 		goto error;						// Handle error and bail.
 		
 	// Iterate over input, breaking into words.
 	while (1) {
-		while (is_whitespace(*str)) 									// Advance past leading spaces.
-			str += 1;
+		while (is_whitespace(*vstr)) 									// Advance past leading spaces.
+			vstr += 1;
 
-		if (is_nul(*str))												// Stop at end.
+		if (is_nul(*vstr))												// Stop at end.
 			break;
 
 		// Record start & advance until we see a space.
-		cmd = str;
-		while ((!is_whitespace(*str)) && (!is_nul(*str)))
-			str += 1;
+		cmd = vstr;
+		while ((!is_whitespace(*vstr)) && (!is_nul(*vstr)))
+			vstr += 1;
 
-		if (!is_nul(*str))								// If there was NOT already a nul at the end of this string...
-			*str++ = '\0';								// Terminate white space delimited command and advance to next char.
+		if (!is_nul(*vstr))								// If there was NOT already a nul at the end of this string...
+			*vstr++ = '\0';								// Terminate white space delimited command and advance to next char.
 
 		command_rc = execute(cmd);						// Try to execute command.
 		if (CONSOLE_RC_OK != command_rc) {				// Bail on error.
