@@ -13,6 +13,9 @@
 #define utilsIsTypeSigned(T_) (((T_)(-1)) < (T_)0)
 
 // And check for compatibility of the two console integral types. If this is wrong so much will break in surprising ways.
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wtype-limits"
+
 STATIC_ASSERT(sizeof(console_int_t) == sizeof(console_uint_t));
 STATIC_ASSERT(utilsIsTypeSigned(console_int_t));
 STATIC_ASSERT(!utilsIsTypeSigned(console_uint_t));
@@ -20,8 +23,10 @@ STATIC_ASSERT(!utilsIsTypeSigned(console_uint_t));
 // The console type must be able to represent a pointer.
 STATIC_ASSERT(sizeof(void*) == sizeof(console_uint_t));
 
+#pragma GCC diagnostic pop
+
 // Unused static functions are OK. The linker will remove them.
-#pragma GCC diagnostic ignored "-Wunused-function"
+// #pragma GCC diagnostic ignored "-Wunused-function"
 
 // Struct to hold the console interpreter's state.
 typedef struct {
@@ -43,7 +48,7 @@ static console_context_t f_console_ctx;
 // State for consoleAccept(). Done seperately as if not used the linker will remove it.
 typedef struct {
 	char inbuf[CONSOLE_INPUT_BUFFER_SIZE + 1];
-	uint_least8_t inbidx;
+	console_small_uint_t inbidx;
 } accept_context_t;
 static accept_context_t f_accept_context;
 
@@ -53,18 +58,18 @@ void console_raise(console_rc_t rc) {
 }
 
 // Error handling in commands.
-void console_verify_can_pop(uint_least8_t n) { if (!console_can_pop(n)) console_raise(CONSOLE_RC_ERR_DSTK_UNF); }
-void console_verify_can_push(uint_least8_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERR_DSTK_OVF); }
-void console_verify_bounds(uint_least8_t idx, uint_least8_t size) { if (idx >= size) console_raise(CONSOLE_RC_ERR_BAD_IDX); }
+void console_verify_can_pop(console_small_uint_t n) { if (!console_can_pop(n)) console_raise(CONSOLE_RC_ERR_DSTK_UNF); }
+void console_verify_can_push(console_small_uint_t n) { if (!console_can_push(n)) console_raise(CONSOLE_RC_ERR_DSTK_OVF); }
+void console_verify_bounds(console_small_uint_t idx, console_small_uint_t size) { if (idx >= size) console_raise(CONSOLE_RC_ERR_BAD_IDX); }
 
 // Stack primitives.
-console_int_t console_u_pick(uint_least8_t i)	{ return f_console_ctx.sp[i]; }
-console_int_t& console_u_tos() 			{ console_verify_can_pop(1); return *f_console_ctx.sp; }
-console_int_t& console_u_nos() 			{ console_verify_can_pop(2); return *(f_console_ctx.sp + 1); }
-int_least8_t console_u_depth() 			{ return (int_least8_t)(CONSOLE_STACKBASE - f_console_ctx.sp); }
-console_int_t console_u_pop() 				{ console_verify_can_pop(1); return *(f_console_ctx.sp++); }
+console_int_t console_u_pick(console_small_uint_t i)	{ return f_console_ctx.sp[i]; }
+console_int_t* console_u_tos_(void) 		{ console_verify_can_pop(1); return f_console_ctx.sp; }
+console_int_t* console_u_nos_(void)			{ console_verify_can_pop(2); return f_console_ctx.sp + 1; }
+console_small_uint_t console_u_depth(void)	{ return (console_small_uint_t)(CONSOLE_STACKBASE - f_console_ctx.sp); }
+console_int_t console_u_pop(void) 			{ console_verify_can_pop(1); return *(f_console_ctx.sp++); }
 void console_u_push(console_int_t x) 		{ console_verify_can_push(1); *--f_console_ctx.sp = x; }
-void console_u_clear()						{ f_console_ctx.sp = CONSOLE_STACKBASE; }
+void console_u_clear(void)					{ f_console_ctx.sp = CONSOLE_STACKBASE; }
 
 // Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 // The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.
@@ -83,25 +88,25 @@ uint16_t console_hash(const char* str) {
 }
 
 // Convert a single character in range [0-9a-zA-Z] to a number up to 35. A large value (255) is returned on error.
-static uint_least8_t convert_digit(char c) {
+static console_small_uint_t convert_digit(char c) {
 	if ((c >= '0') && (c <= '9'))
-		return (uint_least8_t)c - '0';
+		return (console_small_uint_t)c - '0';
 	else if ((c >= 'a') && (c <= 'z'))
-		return (uint_least8_t)c -'a' + 10;
+		return (console_small_uint_t)c -'a' + 10;
 	else if ((c >= 'A') && (c <= 'Z'))
-		return (uint_least8_t)c -'A' + 10;
+		return (console_small_uint_t)c -'A' + 10;
 	else
 		return 255;
 }
 
 // Convert an unsigned number of any base up to 36. Return true on success.
-static bool convert_number(console_uint_t* number, uint_least8_t base, const char* str) {
+static bool convert_number(console_uint_t* number, console_small_uint_t base, const char* str) {
 	if ('\0' == *str)		// If string is empty then fail.
 		return false;
 
 	*number = 0;
 	while ('\0' != *str) {
-		const uint_least8_t digit = convert_digit(*str++);
+		const console_small_uint_t digit = convert_digit(*str++);
 		if (digit >= base)
 			return false;		   /* Cannot convert with current base. */
 
@@ -149,7 +154,7 @@ bool console_r_number_decimal(char* cmd) {
 	}
 
 	// Success.
-	console_u_push(result);
+	console_u_push((console_int_t)result);
 	return true;
 }
 
@@ -163,17 +168,17 @@ bool console_r_number_hex(char* cmd) {
 		return false;
 
 	// Success.
-	console_u_push(result);
+	console_u_push((console_int_t)result);
 	return true;
 }
 
 // Convert 2 hex digits.
 static bool convert_2_hex(const char* s, uint8_t* num) {
-	const uint_least8_t digit_1 = convert_digit(s[0]);
+	const console_small_uint_t digit_1 = convert_digit(s[0]);
 	if (digit_1 >= 16)
 		return false;
 
-	const uint_least8_t digit_2 = convert_digit(s[1]);
+	const console_small_uint_t digit_2 = convert_digit(s[1]);
 	if (digit_2 >= 16)
 		return false;
 	*num = (digit_1 << 4) | digit_2;
@@ -250,7 +255,7 @@ bool console_cmds_builtin(char* cmd) {
 
 // Example output routines.
 #if 0
-void consolePrint(uint_least8_t opt, console_int_t x) {
+void consolePrint(console_small_uint_t opt, console_int_t x) {
 	switch (opt & 0x7f) {
 		case CONSOLE_PRINT_NEWLINE:		printf(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return;
 		default:						/* ignore */; return;
@@ -366,6 +371,6 @@ console_rc_t consoleAccept(char c) {
 char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
 
 // Test functions
-uint_least8_t consoleStackDepth() { return console_u_depth(); }
-console_int_t consoleStackPick(uint_least8_t i) { return console_u_pick(i); }
+console_small_uint_t consoleStackDepth() { return (console_small_uint_t)console_u_depth(); }
+console_int_t consoleStackPick(console_small_uint_t i) { return console_u_pick(i); }
 void consoleReset() { console_u_clear(); }

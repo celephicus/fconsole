@@ -8,6 +8,7 @@
 enum {
 	CONSOLE_RC_ERR_USER_EXIT = CONSOLE_RC_ERR_USER, // Exit from program
 };
+
 static bool console_cmds_user(char* cmd) {
 	switch (console_hash(cmd)) {
 		case /** + **/ 0XB58E: console_binop(+); break;
@@ -33,7 +34,7 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 	NULL
 };
 
-static void prompt() {
+static void prompt(void) {
 	printf("\n>");
 }
 
@@ -42,12 +43,12 @@ static void prompt() {
 #include <unistd.h>
 
 /* reads from keypress, doesn't echo */
-int getch(void) {
+static int getch(void) {
     struct termios oldattr, newattr;
     int ch;
     tcgetattr( STDIN_FILENO, &oldattr );
     newattr = oldattr;
-    newattr.c_lflag &= ~( ICANON | ECHO );
+    newattr.c_lflag &= (tcflag_t)~( ICANON | ECHO );
     tcsetattr( STDIN_FILENO, TCSANOW, &newattr );
     ch = getchar();
     tcsetattr( STDIN_FILENO, TCSANOW, &oldattr );
@@ -83,7 +84,7 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-void consolePrint(uint_least8_t opt, console_int_t x) {
+void consolePrint(console_small_int_t opt, console_int_t x) {
 	switch (opt & 0x7f) {
 		case CONSOLE_PRINT_NEWLINE:		printf("\n"); (void)x; return; 				// No separator.
 		default:						(void)x; return;							// Ignore, print nothing.

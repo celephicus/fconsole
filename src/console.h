@@ -42,7 +42,7 @@ enum {
 	CONSOLE_PRINT_CHAR,			// Print second arg as char, with trailing space.
 	CONSOLE_PRINT_NO_SEP = 0x80	// AND with option to _NOT_ print a trailing space.
 };
-void consolePrint(uint_least8_t opt, console_int_t x);
+void consolePrint(console_small_int_t opt, console_int_t x);
 
 // Prototypes for various recogniser functions.
 
@@ -86,7 +86,7 @@ enum {
 };
 
 // Type for a console API call status code.
-typedef int_least8_t console_rc_t;
+typedef console_small_int_t console_rc_t;
 
 // Return a short description of the error as a pointer to a PROGMEM string.
 const char* consoleGetErrorDescription(console_rc_t err);
@@ -100,7 +100,7 @@ console_rc_t consoleProcess(char* str, char** current);
 
 /* Resets the state of accept to what it was after calling consoleInit(), or after consoleAccept() has read a newline 
  * and returned either CONSOLE_RC_OK or CONSOLE_ERROR_INPUT_OVERFLOW. */
-void consoleAcceptClear();
+void consoleAcceptClear(void);
 
 /* Read chars into a buffer, returning CONSOLE_ERROR_ACCEPT_PENDING. Only CONSOLE_INPUT_BUFFER_SIZE chars are stored.
 	If the character CONSOLE_INPUT_NEWLINE_CHAR is seen, then return CONSOLE_RC_OK if no overflow, else CONSOLE_ERROR_INPUT_OVERFLOW.
@@ -113,18 +113,20 @@ console_rc_t consoleAccept(char c);
 void console_raise(console_rc_t rc);
 
 // Error handling in commands.
-void console_verify_can_pop(uint_least8_t n);
-void console_verify_can_push(uint_least8_t n);
-void console_verify_bounds(uint_least8_t idx, uint_least8_t size);
+void console_verify_can_pop(console_small_uint_t n);
+void console_verify_can_push(console_small_uint_t n);
+void console_verify_bounds(console_small_uint_t idx, console_small_uint_t size);
 
 // Stack primitives.
-console_int_t console_u_pick(uint_least8_t i);
-console_int_t& console_u_tos();
-console_int_t& console_u_nos();
-int_least8_t console_u_depth();
-console_int_t console_u_pop();
+console_int_t console_u_pick(console_small_uint_t i);
+console_int_t* console_u_tos_(void);
+#define console_u_tos() (*console_u_tos_())
+console_int_t* console_u_nos_(void);
+#define console_u_nos() (*console_u_nos_())
+console_small_uint_t console_u_depth(void);
+console_int_t console_u_pop(void);
 void console_u_push(console_int_t x);
-void console_u_clear();
+void console_u_clear(void);
 
 /* Some helper macros for commands. */
 #define console_binop(op_)	{ const console_int_t rhs = console_u_pop(); console_u_tos() = console_u_tos() op_ rhs; } 	// Implement a binary operator.
@@ -134,17 +136,17 @@ void console_u_clear();
 //
 
 // Return input buffer, only valid when consoleAccept() has not returned PENDING.
-char* consoleAcceptBuffer();
+char* consoleAcceptBuffer(void);
 
 // Return depth of stack, useful for testing.
-uint_least8_t consoleStackDepth();
+console_small_uint_t consoleStackDepth(void);
 
 // Return stack values from the top down, if you go beyond (depth-1) you might read outside valid memory.
-console_int_t consoleStackPick(uint_least8_t i);
+console_int_t consoleStackPick(console_small_uint_t i);
 
 /* Resets the state of the console to what it would be after initialisation. Note does not affect the state of accept.
 	Useful for testing. */
-void consoleReset();
+void consoleReset(void);
 
 /* Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 	The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.

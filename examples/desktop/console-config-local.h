@@ -12,6 +12,10 @@
 typedef int64_t  console_int_t;		
 typedef uint64_t console_uint_t;
 
+/* For efficient implementation we have a small signed & unsigned type. Usually [u]int8_t will work fine. */
+typedef uint8_t console_small_uint_t;
+typedef int8_t  console_small_int_t;
+
 // For unit test we want printf format for signed console type.
 #define CONSOLE_FORMAT_INT "ld"
 

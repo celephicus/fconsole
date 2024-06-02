@@ -1,4 +1,4 @@
-CC := g++
+CC := gcc
 
 DEFINES := -DCONSOLE_USE_LOCAL_CONFIG
 CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogical-op -Wmissing-declarations \
@@ -19,12 +19,12 @@ all: $(TARGET)
 $(TARGET): main.o console.o
 	$(CC) -o $@ main.o console.o
 
-#	$(SRCDIR)/console-mk.py $(SRCDIR)/console.cpp
+#	$(SRCDIR)/console-mk.py $(SRCDIR)/console.c
 
-main.o: main.cpp $(HEADERS)  
+main.o: main.c $(HEADERS)  
 	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@	
 
-console.o: $(SRCDIR)/console.cpp $(HEADERS) 
+console.o: $(SRCDIR)/console.c $(HEADERS) 
 	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@	
 
 clean:
