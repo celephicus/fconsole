@@ -168,7 +168,7 @@ bool console_r_number_hex(char* cmd) {
 }
 
 // Convert 2 hex digits.
-bool convert_2_hex(const char* s, uint8_t* num) {
+static bool convert_2_hex(const char* s, uint8_t* num) {
 	const uint_least8_t digit_1 = convert_digit(s[0]);
 	if (digit_1 >= 16)
 		return false;

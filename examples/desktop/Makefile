@@ -1,7 +1,8 @@
 CC := g++
 
 DEFINES := -DCONSOLE_USE_LOCAL_CONFIG
-CFLAGS := -g -O0 -Wall -Wpedantic -Wextra -Wconversion -O3
+CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogical-op -Wmissing-declarations \
+			-Wpadded -Wshadow -Wstrict-prototypes -Wswitch-default -Wwrite-strings
 
 SRCDIR = ../../src
 INCLUDES := -I. -I$(SRCDIR)
