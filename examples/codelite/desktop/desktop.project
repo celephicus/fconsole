@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CodeLite_Project Name="desktop" Version="11000" InternalType="Console">
   <VirtualDirectory Name="desktop">
+    <File Name="../../desktop/main.c"/>
     <File Name="../../desktop/prebuild.sh"/>
-    <File Name="../../desktop/main.cpp"/>
     <File Name="../../desktop/console-config-local.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
   <VirtualDirectory Name="src">
+    <File Name="../../../src/console.c"/>
     <File Name="../../../src/console-mk.py"/>
     <File Name="../../../src/console.h"/>
-    <File Name="../../../src/console.cpp"/>
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>
@@ -27,6 +27,7 @@
         <IncludePath Value="../../../src"/>
         <IncludePath Value="../../desktop/"/>
         <Preprocessor Value="CONSOLE_USE_LOCAL_CONFIG"/>
+        <Preprocessor Value="CONSOLE_WANT_HELP"/>
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>
@@ -41,7 +42,7 @@
         <StartupCommands/>
       </Debugger>
       <PreBuild>
-        <Command Enabled="yes">../../../src/console-mk.py ../../../src/console.cpp ../../desktop/main.cpp</Command>
+        <Command Enabled="yes">../../desktop/prebuild.sh</Command>
       </PreBuild>
       <PostBuild/>
       <CustomBuild Enabled="no">

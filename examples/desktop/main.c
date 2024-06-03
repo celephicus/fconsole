@@ -11,12 +11,12 @@ enum {
 
 static bool console_cmds_user(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** + **/ 0XB58E: console_binop(+); break;
-		case /** - **/ 0XB588: console_binop(-); break;
-		case /** NEGATE **/ 0X7A79: console_unop(-); break;
-		case /** RAISE **/ 0X4069: console_raise((console_rc_t)console_u_pop()); break;
-		case /** EXIT **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER_EXIT); break;
-		case /** # **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
+		case /** + ( x1 x2 - x3) Add values: x3 = x1 + x2. **/ 0XB58E: console_binop(+); break;
+		case /** - ( x1 x2 - x3) Subtract values: x3 = x1 - x2. **/ 0XB588: console_binop(-); break;
+		case /** NEGATE ( d1 - d2) Negate signed value: d2 = -d1. **/ 0X7A79: console_unop(-); break;
+		case /** RAISE ( i - ) Raise value as exception. **/ 0X4069: console_raise((console_rc_t)console_u_pop()); break;
+		case /** EXIT ( - ?) Exit console. **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER_EXIT); break;
+		case /** # ( - ) Comment, rest of input ignored. **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
 		default: return false;
 	}
 	return true;
@@ -30,6 +30,9 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 	console_r_string,
 	console_r_hex_string,
 	console_cmds_builtin,
+#if CONSOLE_WANT_HELP
+	console_cmds_help, 
+#endif // CONSOLE_WANT_HELP
 	console_cmds_user,
 	NULL
 };

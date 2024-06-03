@@ -65,16 +65,19 @@ bool console_r_hex_string(char* cmd);
 // Essential commands that will always be required
 bool console_cmds_builtin(char* cmd);
 
+// Optional help commands, will be empty if CONSOLE_WANT_HELP not defined.
+bool console_cmds_help(char* cmd);
+
 /* Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative values are more like status codes that
 	do not indicate an error. */
 enum {
 	CONSOLE_RC_OK =				0,	// Returned by consoleProcess() for no errors and by consoleAccept() for a newline with no overflow.
 
 	// Errors: something has gone wrong...
-	CONSOLE_RC_ERR_NUM_OVF =	1,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds,
-	CONSOLE_RC_ERR_DSTK_UNF =	2,	// Stack underflowed (attempt to pop or examine too many items).
-	CONSOLE_RC_ERR_DSTK_OVF =	3,	// Stack overflowed (attempt to push too many items).
-	CONSOLE_RC_ERR_BAD_CMD =	4,	// A command or value was not recognised.
+	CONSOLE_RC_ERR_BAD_CMD =	1,	// A command or value was not recognised.
+	CONSOLE_RC_ERR_NUM_OVF =	2,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds,
+	CONSOLE_RC_ERR_DSTK_UNF =	3,	// Stack underflowed (attempt to pop or examine too many items).
+	CONSOLE_RC_ERR_DSTK_OVF =	4,	// Stack overflowed (attempt to push too many items).
 	CONSOLE_RC_ERR_ACC_OVF =	5,	// Accept buffer has been sent more characters than it can hold. Only returned by consoleAccept().
 	CONSOLE_RC_ERR_BAD_IDX =	6,	// Index out of range.
 	CONSOLE_RC_ERR_USER,			// Error codes available for the user.

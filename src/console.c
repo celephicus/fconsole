@@ -240,18 +240,51 @@ bool console_r_hex_string(char* cmd) {
 // Essential commands that will always be required
 bool console_cmds_builtin(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** . **/ 0XB58B: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;		// Pop and print in signed decimal.
-		case /** U. **/ 0X73DE: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;	// Pop and print in unsigned decimal, with leading `+'.
-		case /** $. **/ 0X658F: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;		// Pop and print as 4 hex digits decimal with leading `$'.
-		case /** ." **/ 0X66C9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		// Pop and print string.
-		case /** DEPTH **/ 0XB508: console_u_push(console_u_depth()); break;					// Push stack depth.
-		case /** CLEAR **/ 0X9F9C: console_u_clear(); break;									// Clear stack so that it has zero depth.
-		case /** DROP **/ 0X5C2C: console_u_pop(); break;										// Remove top item from stack.
-		case /** HASH **/ 0X90B7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	// Pop string and push hash value.
+		case /** . (d - ) Pop and print in signed decimal. **/ 0XB58B: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;
+		case /** U. (u - ) Pop and print in unsigned decimal, with leading `+'. **/ 0X73DE: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;
+		case /** $. (u - ) Pop and print as 4 hex digits decimal with leading `$'. **/ 0X658F: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;
+		case /** ." (s - ) Pop and print string. **/ 0X66C9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		
+		case /** DEPTH ( - u) Push stack depth. **/ 0XB508: console_u_push(console_u_depth()); break;					
+		case /** CLEAR ( ... - <empty>) Clear stack so that it has zero depth. **/ 0X9F9C: console_u_clear(); break;									
+		case /** DROP (x - ) Remove top item from stack. **/ 0X5C2C: console_u_pop(); break;										
+		case /** HASH (s - u) Pop string and push hash value. **/ 0X90B7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	
 		default: return false;
 	}
 	return true;
 }
+
+// Optional help commands.
+#if CONSOLE_WANT_HELP
+
+#include "console_help.autogen.inc"
+
+bool console_cmds_help(char* cmd) {
+	switch (console_hash(cmd)) {
+		case /** HELPS ( - ) Print (wordy) help for all commands. **/ 0X2787: {
+			const char* const * hh = &help_cmds[0];
+			for (console_small_uint_t i = 0; i < sizeof(help_cmds)/sizeof(help_cmds[0]); i += 1, hh += 1) {
+				consolePrint(CONSOLE_PRINT_NEWLINE, 0);
+				consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)pgm_read_word(hh));
+			}
+		} break;
+		case /** HELP (s - ) Search for help on given command. **/ 0X7D54: {
+			const uint16_t cmd_hash = console_hash((const char*)console_u_pop());
+			const uint16_t * hh = &help_hashes[0];
+			for (console_small_uint_t i = 0; i < sizeof(help_hashes)/sizeof(help_hashes[0]); i += 1, hh += 1) {
+				if((uint16_t)pgm_read_word(hh) == cmd_hash) {
+					consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)pgm_read_word(&help_cmds[i]));
+					goto done;
+				}
+			}
+			console_raise(CONSOLE_RC_ERR_BAD_CMD);
+		} break;
+		default: return false;
+	}
+done:	return true;
+}
+#else
+bool console_cmds_help(char* cmd) {	return false; }
+#endif // CONSOLE_WANT_HELP
 
 // Example output routines.
 #if 0
