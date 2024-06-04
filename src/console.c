@@ -221,31 +221,31 @@ exit:	*wp = '\0';									// Terminate string in input buffer.
 // Hex string with a leading '&', then n pairs of hex digits, pushes address of length of string, then binary data.
 // So `&1aff01' will push a pointer to memory 03 1a ff 01.
 bool console_r_hex_string(char* cmd) {
-	unsigned char* len = (unsigned char*)cmd; // Leave space for length of counted string.
+	unsigned char* len = (unsigned char*)cmd; 		// Leave space for length of counted string.
 	if ('&' != *cmd++)
 		return false;
 
-	unsigned char* out_ptr = (unsigned char*)cmd; // We write the converted number back into the input buffer.
+	unsigned char* out_ptr = (unsigned char*)cmd; 	// We write the converted number back into the input buffer.
 	while ('\0' != *cmd) {
-		if (!convert_2_hex(cmd, out_ptr))	// Do conversion.
-			return false;					// Bail on error;
+		if (!convert_2_hex(cmd, out_ptr))			// Do conversion.
+			return false;							// Bail on error;
 		cmd += 2;
 		out_ptr += 1;
 	}
-	*len = (unsigned char)(out_ptr - len) - 1; 				// Store length, looks odd, using len as a pointer and a value.
-	console_u_push((console_int_t)len);		// Push _address_.
+	*len = (unsigned char)(out_ptr - len) - 1; 		// Store length, looks odd, using len as a pointer and a value.
+	console_u_push((console_int_t)len);				// Push _address_.
 	return true;
 }
 
 // Essential commands that will always be required
 bool console_cmds_builtin(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** . (d - ) Pop and print in signed decimal. **/ 0XB58B: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;
-		case /** U. (u - ) Pop and print in unsigned decimal, with leading `+'. **/ 0X73DE: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;
-		case /** $. (u - ) Pop and print as 4 hex digits decimal with leading `$'. **/ 0X658F: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;
+		case /** . (d - ) Pop and print as signed decimal. **/ 0XB58B: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;
+		case /** U. (u - ) Pop and print as unsigned decimal, with leading `+'. **/ 0X73DE: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;
+		case /** $. (u - ) Pop and print as 4 hex digits with leading `$'. **/ 0X658F: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;
 		case /** ." (s - ) Pop and print string. **/ 0X66C9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		
 		case /** DEPTH ( - u) Push stack depth. **/ 0XB508: console_u_push(console_u_depth()); break;					
-		case /** CLEAR ( ... - <empty>) Clear stack so that it has zero depth. **/ 0X9F9C: console_u_clear(); break;									
+		case /** CLEAR ( ... - <empty>) Remove all items from stack. **/ 0X9F9C: console_u_clear(); break;									
 		case /** DROP (x - ) Remove top item from stack. **/ 0X5C2C: console_u_pop(); break;										
 		case /** HASH (s - u) Pop string and push hash value. **/ 0X90B7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	
 		default: return false;
@@ -254,33 +254,43 @@ bool console_cmds_builtin(char* cmd) {
 }
 
 // Optional help commands.
-#if CONSOLE_WANT_HELP
+#ifdef CONSOLE_WANT_HELP
 
 #include "console_help.autogen.inc"
 
 bool console_cmds_help(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** HELPS ( - ) Print (wordy) help for all commands. **/ 0X2787: {
+		case /** ??HELP ( - ) Print (wordy) help for all commands. **/ 0XB0B4: {
 			const char* const * hh = &help_cmds[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_cmds)/sizeof(help_cmds[0]); i += 1, hh += 1) {
 				consolePrint(CONSOLE_PRINT_NEWLINE, 0);
-				consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)pgm_read_word(hh));
+				consolePrint(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP, (console_int_t)pgm_read_ptr(hh));
+			}
+		} break;
+		case /** ?HELP ( - ) Print list of all commands. **/ 0X74CB: {
+			const char* const * hh = &help_cmds[0];
+			for (console_small_uint_t i = 0; i < sizeof(help_cmds)/sizeof(help_cmds[0]); i += 1, hh += 1) {
+				const char* str = (const char*)pgm_read_ptr(hh);
+				char c;
+				while ((' ' != (c = (char)pgm_read_byte(str++))) && ('\0' != c))
+					consolePrint(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP, c);
+				consolePrint(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP, ' ');
 			}
 		} break;
 		case /** HELP (s - ) Search for help on given command. **/ 0X7D54: {
 			const uint16_t cmd_hash = console_hash((const char*)console_u_pop());
-			const uint16_t * hh = &help_hashes[0];
+			const uint16_t* hh = &help_hashes[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_hashes)/sizeof(help_hashes[0]); i += 1, hh += 1) {
-				if((uint16_t)pgm_read_word(hh) == cmd_hash) {
-					consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)pgm_read_word(&help_cmds[i]));
-					goto done;
+				if((uint16_t)pgm_read_ptr(hh) == cmd_hash) {
+					consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)pgm_read_ptr(&help_cmds[i]));
+					return true;
 				}
 			}
 			console_raise(CONSOLE_RC_ERR_BAD_CMD);
 		} break;
 		default: return false;
 	}
-done:	return true;
+	return true;
 }
 #else
 bool console_cmds_help(char* cmd) {	return false; }
@@ -311,7 +321,7 @@ static console_rc_t execute(char* cmd) {
 	// Try all recognisers in turn until one works.
 	const console_recogniser_func* rp = f_console_ctx.recognisers;
 	while (1) {
-		const console_recogniser_func r = (console_recogniser_func)pgm_read_word(rp++);
+		const console_recogniser_func r = (console_recogniser_func)pgm_read_ptr(rp++);
 		if (NULL == r)										// Exit at end.
 			break;
 		if (r(cmd))											// Call recogniser function, returns true on success.

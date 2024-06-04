@@ -1,6 +1,6 @@
 CC := gcc
 
-DEFINES := -DCONSOLE_USE_LOCAL_CONFIG -DCONSOLE_WANT_HELP
+DEFINES := -DCONSOLE_USE_LOCAL_CONFIG
 CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogical-op -Wmissing-declarations \
 			-Wpadded -Wshadow -Wstrict-prototypes -Wswitch-default -Wwrite-strings
 

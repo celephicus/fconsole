@@ -27,7 +27,6 @@
         <IncludePath Value="../../../src"/>
         <IncludePath Value="../../desktop/"/>
         <Preprocessor Value="CONSOLE_USE_LOCAL_CONFIG"/>
-        <Preprocessor Value="CONSOLE_WANT_HELP"/>
       </Compiler>
       <Linker Options="" Required="yes"/>
       <ResourceCompiler Options="" Required="no"/>

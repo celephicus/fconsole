@@ -42,7 +42,7 @@ enum {
 	CONSOLE_PRINT_CHAR,			// Print second arg as char, with trailing space.
 	CONSOLE_PRINT_NO_SEP = 0x80	// AND with option to _NOT_ print a trailing space.
 };
-void consolePrint(console_small_int_t opt, console_int_t x);
+void consolePrint(console_small_uint_t opt, console_int_t x);
 
 // Prototypes for various recogniser functions.
 

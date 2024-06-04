@@ -47,7 +47,7 @@ for infile in sum([glob.glob(_, recursive=True) for _ in sys.argv[1:]], []):
 		print("skipped as unchanged.", file=sys.stderr)
 
 def ss(s): return s.replace('"', '\\"')
-help_decl_cmd_text = '\n'.join([f'static const char cmd_help_{h:04X}[] = PSTR("{ss(c[0] + " " + c[1])}");' for h, c in cmds.items()])
+help_decl_cmd_text = '\n'.join([f'static const char cmd_help_{h:04X}[] PROGMEM = PSTR("{ss(c[0] + " " + c[1])}");' for h, c in cmds.items()])
 help_decl_cmds = '\n'.join([f'    cmd_help_{h:04X},' for h in cmds])
 help_decl_hashes = '\n'.join([f'    0x{h:04X},' for h in cmds])
 				
@@ -58,11 +58,11 @@ if output_dir is not None:
 
 {help_decl_cmd_text}
 
-static const char* const help_cmds[] = {{
+static const char* const help_cmds[] PROGMEM = {{
 {help_decl_cmds}
 }};
 
-static const uint16_t help_hashes[] = {{
+static const uint16_t help_hashes[] PROGMEM = {{
 {help_decl_hashes}
 }};
 

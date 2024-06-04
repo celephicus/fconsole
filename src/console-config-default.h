@@ -14,6 +14,10 @@
 typedef int16_t  console_int_t;
 typedef uint16_t console_uint_t;
 
+/* For efficient implementation we have a small signed & unsigned type. Usually [u]int8_t will work fine. */
+typedef uint8_t console_small_uint_t;
+typedef int8_t  console_small_int_t;
+
 // For unit test we want printf format for signed console type.
 #define CONSOLE_FORMAT_INT "d"
 
@@ -25,5 +29,8 @@ typedef uint16_t console_uint_t;
 
 // Character to signal EOL for input string.
 #define CONSOLE_INPUT_NEWLINE_CHAR '\r'
+
+// We want some help included. 
+#define CONSOLE_WANT_HELP
 
 #endif // CONSOLE_CONFIG_DEFAULT_H__

@@ -29,8 +29,13 @@ typedef int8_t  console_small_int_t;
 #define CONSOLE_INPUT_NEWLINE_CHAR '\n'
 
 // Macros to fake Arduino Flash memory macros.
-#define pgm_read_word(a_) (*(a_))
+#define pgm_read_word(a_) (*((const uint16_t*)a_))
+#define pgm_read_byte(a_) (*((const uint8_t*)a_))
+#define pgm_read_ptr(a_) (*(a_))
 #define PSTR(s_) s_
 #define PROGMEM /* empty*/
+
+// We want some help included. 
+#define CONSOLE_WANT_HELP
 
 #endif // CONSOLE_CONFIG_LOCAL_H__

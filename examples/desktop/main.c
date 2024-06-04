@@ -30,7 +30,7 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 	console_r_string,
 	console_r_hex_string,
 	console_cmds_builtin,
-#if CONSOLE_WANT_HELP
+#ifdef CONSOLE_WANT_HELP
 	console_cmds_help, 
 #endif // CONSOLE_WANT_HELP
 	console_cmds_user,
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-void consolePrint(console_small_int_t opt, console_int_t x) {
+void consolePrint(console_small_uint_t opt, console_int_t x) {
 	switch (opt & 0x7f) {
 		case CONSOLE_PRINT_NEWLINE:		printf("\n"); (void)x; return; 				// No separator.
 		default:						(void)x; return;							// Ignore, print nothing.
