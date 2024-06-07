@@ -9,3 +9,9 @@
 # arduino-cli log file is not interesting.
 arduino-cli.log
 
+# Ignore coverage files.
+**/*.gcda
+**/*.gcno
+
+
+

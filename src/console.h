@@ -121,7 +121,7 @@ void console_verify_can_push(console_small_uint_t n);
 void console_verify_bounds(console_small_uint_t idx, console_small_uint_t size);
 
 // Stack primitives.
-console_int_t console_u_pick(console_small_uint_t i);
+console_int_t console_u_get(console_small_uint_t i); // 0 is TOS, 1 is NOS, ...
 console_int_t* console_u_tos_(void);
 #define console_u_tos() (*console_u_tos_())
 console_int_t* console_u_nos_(void);
@@ -135,21 +135,11 @@ void console_u_clear(void);
 #define console_binop(op_)	{ const console_int_t rhs = console_u_pop(); console_u_tos() = console_u_tos() op_ rhs; } 	// Implement a binary operator.
 #define console_unop(op_)	{ console_u_tos() = op_ console_u_tos(); }											// Implement a unary operator.
 
-// Following functions are for testing only.
+// Following functions are exposed for testing only.
 //
 
 // Return input buffer, only valid when consoleAccept() has not returned PENDING.
 char* consoleAcceptBuffer(void);
-
-// Return depth of stack, useful for testing.
-console_small_uint_t consoleStackDepth(void);
-
-// Return stack values from the top down, if you go beyond (depth-1) you might read outside valid memory.
-console_int_t consoleStackPick(console_small_uint_t i);
-
-/* Resets the state of the console to what it would be after initialisation. Note does not affect the state of accept.
-	Useful for testing. */
-void consoleReset(void);
 
 /* Hash function as we store command names as a 16 bit hash. Lower case letters are converted to upper case.
 	The values came from Wikipedia and seem to work well, in that collisions between the hash values of different commands are very rare.

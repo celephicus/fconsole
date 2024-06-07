@@ -51,6 +51,8 @@ static bool console_cmds_user(char* cmd) {
 		case /** # ( - ) Comment, rest of input ignored. **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
 		case /** RAISE ( i - ) Raise value as exception. **/ 0X4069: console_raise((console_rc_t)console_u_pop()); break;
 		case /** EXIT ( - ?) Exit console. **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER_EXIT); break;
+		case /** PICK (u - x) Copy stack item by index. **/ 0X13B4: console_u_tos() = console_u_get((console_small_uint_t)console_u_tos()+1); break;
+		case /** OVER (x1 x2 - x1 x2 x1) Copy second stack item. **/ 0X398B: console_u_push(console_u_nos()); break;
 		default: return false;
 	}
 	return true;
@@ -115,26 +117,42 @@ static char* check_print(console_small_uint_t opt, console_int_t x, const char* 
 	return NULL;
 }
 
+static void dump_stack(void) {
+	console_small_uint_t i = console_u_depth();
+	sprintf(msg+strlen(msg), "[%d] ", i);
+	while (i-- > 0)
+		sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_INT " ", console_u_get(i)); 
+}
 static char* check_console(const char* input, const char* output, console_rc_t rc_expected, console_small_uint_t depth_expected, ...) {
-	char inbuf[32];										// Copy input string as we are not meant to write to string literals.
+	char inbuf[100];									// Copy input string as we are not meant to write to string literals.
+	va_list ap;
+
 	strcpy(inbuf, input);
-	console_rc_t rc = consoleProcess(inbuf, NULL);			// Process input string.
+	console_rc_t rc = consoleProcess(inbuf, NULL);		// Process input string.
 	mu_assert_equal_int(rc, rc_expected);				// Verify return code...
 	mu_assert_equal_str(print_output_get(), output);	// Verify output string...
 	
-	// Verify stack, starting with depth, then contents.
-	mu_assert_equal_int(consoleStackDepth(), depth_expected); 
-	va_list ap;
+	// Build error message for stack.
+	strcpy(msg, "Stack: expected: ");
+	dump_stack();
+	console_small_uint_t i = depth_expected;
+	sprintf(msg+strlen(msg), "; got: [%d] ", i);
 	va_start(ap, depth_expected);
-	while (depth_expected-- > 0) {
-		if (consoleStackPick(depth_expected) != va_arg(ap, console_int_t)) { 
-			sprintf(msg, " stack: "); 
-			for (uint8_t i = 0; i < consoleStackDepth(); i += 1) 
-				sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_INT " ", consoleStackPick(i)); 
-			tests_fail++;
+	while (i-- > 0) 
+		sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_INT " ", va_arg(ap, console_int_t)); 
+	va_end(ap);
+
+	// Verify stack, starting with depth, then contents.
+	if (console_u_depth() != depth_expected) 
+		return msg;
+
+	va_start(ap, depth_expected);
+	i = console_u_depth();
+	while (i-- > 0) {
+		if (console_u_get(i) != va_arg(ap, console_int_t)) 
 			return msg;
-		}
 	}
+
 	return NULL;
 }
 
@@ -291,6 +309,7 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("\"q .\"", "q ",				CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("\"q\\n\\r\\ .\"", "q\n\r ",	CONSOLE_RC_OK,				0));			// Trailing \ ignored.
 	mu_run_test(check_console("\"\\1f .\"", "\x1f ",		CONSOLE_RC_OK,				0));			// Single character in hex `1f'. 
+	mu_run_test(check_console("\"\\1g .\"", "1g ",			CONSOLE_RC_OK,				0));			// Bad hex escape.
 
 	// Number printing.
 	mu_run_test(check_console(".", "",						CONSOLE_RC_ERR_DSTK_UNF,	0));
@@ -346,6 +365,16 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("1 2 CLEAR", "",				CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("DEPTH", "",					CONSOLE_RC_OK,				1, (console_int_t)0));
 	mu_run_test(check_console("123 DEPTH", "",				CONSOLE_RC_OK,				2, (console_int_t)123, (console_int_t)1));
+	mu_run_test(check_console("1 1 1 1 DEPTH", "",			CONSOLE_RC_ERR_DSTK_OVF,	4, (console_int_t)1, (console_int_t)1, (console_int_t)1, (console_int_t)1));
+	mu_run_test(check_console("PICK", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
+	mu_run_test(check_console("0 PICK", "",					CONSOLE_RC_ERR_BAD_IDX,		1, (console_int_t)0));
+	mu_run_test(check_console("1234 0 PICK", "",			CONSOLE_RC_OK,				2, (console_int_t)1234, (console_int_t)1234));
+	mu_run_test(check_console("2345 1234 1 PICK", "",		CONSOLE_RC_OK,				3, (console_int_t)2345, (console_int_t)1234, (console_int_t)2345));
+	mu_run_test(check_console("2345 1234 2 PICK", "",		CONSOLE_RC_ERR_BAD_IDX,		3, (console_int_t)2345, (console_int_t)1234, (console_int_t)2));
+	mu_run_test(check_console("OVER", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
+	mu_run_test(check_console("1234 OVER", "",				CONSOLE_RC_ERR_DSTK_UNF,	1, (console_int_t)1234));
+	mu_run_test(check_console("1234 2345 OVER", "",			CONSOLE_RC_OK,				3, (console_int_t)1234, (console_int_t)2345, (console_int_t)1234));
+	mu_run_test(check_console("1 1 1 1 OVER", "",			CONSOLE_RC_ERR_DSTK_OVF,	4, (console_int_t)1, (console_int_t)1, (console_int_t)1, (console_int_t)1));
 
 	// Arithmetic operators.
 	mu_run_test(check_console("1 +", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
@@ -354,7 +383,7 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("1 -", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
 	mu_run_test(check_console("-", "",						CONSOLE_RC_ERR_DSTK_UNF,	0));
 	mu_run_test(check_console("1 2 -", "",					CONSOLE_RC_OK,				1, (console_int_t)-1));
-	mu_run_test(check_console("NEGATE", "",					CONSOLE_RC_ERR_DSTK_UNF,	(console_int_t)0));
+	mu_run_test(check_console("NEGATE", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
 	mu_run_test(check_console("1 NEGATE", "",				CONSOLE_RC_OK,				1, (console_int_t)-1));
 	
 	// Comments & raise.

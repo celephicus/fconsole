@@ -63,7 +63,7 @@ void console_verify_can_push(console_small_uint_t n) { if (!console_can_push(n))
 void console_verify_bounds(console_small_uint_t idx, console_small_uint_t size) { if (idx >= size) console_raise(CONSOLE_RC_ERR_BAD_IDX); }
 
 // Stack primitives.
-console_int_t console_u_pick(console_small_uint_t i)	{ return f_console_ctx.sp[i]; }
+console_int_t console_u_get(console_small_uint_t i)	{ console_verify_bounds(i, console_u_depth()); return f_console_ctx.sp[i]; }
 console_int_t* console_u_tos_(void) 		{ console_verify_can_pop(1); return f_console_ctx.sp; }
 console_int_t* console_u_nos_(void)			{ console_verify_can_pop(2); return f_console_ctx.sp + 1; }
 console_small_uint_t console_u_depth(void)	{ return (console_small_uint_t)(CONSOLE_STACKBASE - f_console_ctx.sp); }
@@ -412,8 +412,3 @@ console_rc_t consoleAccept(char c) {
 	}
 }
 char* consoleAcceptBuffer() { return f_accept_context.inbuf; }
-
-// Test functions
-console_small_uint_t consoleStackDepth() { return (console_small_uint_t)console_u_depth(); }
-console_int_t consoleStackPick(console_small_uint_t i) { return console_u_pick(i); }
-void consoleReset() { console_u_clear(); }
