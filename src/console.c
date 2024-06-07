@@ -221,7 +221,7 @@ exit:	*wp = '\0';									// Terminate string in input buffer.
 // Hex string with a leading '&', then n pairs of hex digits, pushes address of length of string, then binary data.
 // So `&1aff01' will push a pointer to memory 03 1a ff 01.
 bool console_r_hex_string(char* cmd) {
-	unsigned char* len = (unsigned char*)cmd; 		// Leave space for length of counted string.
+	unsigned char* len_ptr = (unsigned char*)cmd; 		// Leave space for length of counted string.
 	if ('&' != *cmd++)
 		return false;
 
@@ -232,8 +232,10 @@ bool console_r_hex_string(char* cmd) {
 		cmd += 2;
 		out_ptr += 1;
 	}
-	*len = (unsigned char)(out_ptr - len) - 1; 		// Store length, looks odd, using len as a pointer and a value.
-	console_u_push((console_int_t)len);				// Push _address_.
+	*len_ptr = (unsigned char)(out_ptr - len_ptr) - 1; 		// Store length, looks odd, using len as a pointer and a value.
+	if (0 == *len_ptr)
+		return false;									// Zero length string is an error.
+	console_u_push((console_int_t)len_ptr);				// Push _address_.
 	return true;
 }
 

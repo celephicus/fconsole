@@ -3,8 +3,8 @@ CC := gcc
 DEFINES := -DCONSOLE_USE_LOCAL_CONFIG
 CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogical-op -Wmissing-declarations \
 			-Wpadded -Wshadow -Wstrict-prototypes -Wswitch-default -Wwrite-strings
-# GCOV_CFLAGS = --coverage -O0
-# GCOV_LDFLAGS = -lgcov --coverage 
+GCOV_CFLAGS = --coverage -O0
+GCOV_LDFLAGS = -lgcov --coverage 
 
 SRCDIR = ../src
 INCLUDES := -I. -I$(SRCDIR)

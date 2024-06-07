@@ -6,37 +6,43 @@
 
 #include "console.h"
 
-static char msg[100];
-static char* mk_msg(const char* fmt, ...) {
+// Test code from adapted from minunit: http://www.jera.com/techinfo/jtns/jtn002.html
+static char mu_msg[200];
+static void mu_clear_msg(void) { mu_msg[0] = '\0'; }
+static char* mu_add_msg(const char* fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
-	vsprintf(msg, fmt, ap);
-	return msg;
+	vsprintf(mu_msg + strlen(mu_msg), fmt, ap);
+	return mu_msg;
 }
 
-// Test code from adapted from minunit: http://www.jera.com/techinfo/jtns/jtn002.html
-int tests_run, tests_fail;
-#define mkstr(s_) #s_
-#define mu_init() { tests_run = tests_fail = 0; }
+int mu_tests_run, mu_tests_fail;
+#define mu_mkstr(s_) #s_
+#define mu_init() { mu_tests_run = mu_tests_fail = 0; }
 #define mu_run_test(_test) do { 									\
-	mu_test_setup();												\
-	tests_run++; 													\
+	mu_clear_msg();													\
+	mu_test_setup();	/* User setup hook. */						\
+	mu_tests_run++; 												\
 	const char* fail_msg = _test; 									\
 	if (fail_msg) { 												\
-		tests_fail++;												\
-		printf(PSTR("Fail: " mkstr(_test) ": %s"), fail_msg); 		\
+		mu_tests_fail++;											\
+		printf(PSTR("Fail: " mu_mkstr(_test) ": %s\n"), fail_msg); 	\
 	} 																\
-	mu_test_teardown();												\
+	mu_test_teardown();	/* User teardown hook. */					\
 } while (0)
 
 #define mu_assert_equal_str(val_, expected_) do { 																	\
 	if (0 != strcmp((val_), (expected_))) 																			\
-  		return mk_msg(PSTR("%s != %s; expected `%s', got `%s'\n"), mkstr(val_), mkstr(expected_), expected_, val_); 	\
+  		return mu_add_msg(PSTR("%s != %s; expected `%s', got `%s'."), mu_mkstr(val_), mu_mkstr(expected_), expected_, val_); 	\
 } while (0)
 #define mu_assert_equal_int(val_, expected_) do { 																	\
 	if ((int)(val_) != (int)(expected_)) 																			\
-  		return mk_msg(PSTR("%s != %s; expected `%d', got `%d'\n"), mkstr(val_), mkstr(expected_), expected_, val_); 	\
+  		return mu_add_msg(PSTR("%s != %s; expected `%d', got `%d'."), mu_mkstr(val_), mu_mkstr(expected_), expected_, val_); 	\
 } while (0)
+
+static void	mu_print_summary(void) {
+	printf(PSTR("Tests run: %d, failed: %d.\n"), mu_tests_run, mu_tests_fail);
+}
 
 // Recogniser to support our tests.
 enum {
@@ -95,6 +101,7 @@ void consolePrint(console_small_uint_t opt, console_int_t x) {
 }
 
 static void mu_test_setup(void) {
+	mu_msg[0] = '\0'; 										// Clear message buffer.
 	print_output_init();
 	consoleInit(RECOGNISERS);							// Setup console.
 	consoleAcceptClear();								// NOT done by console Init. 
@@ -117,15 +124,10 @@ static char* check_print(console_small_uint_t opt, console_int_t x, const char* 
 	return NULL;
 }
 
-static void dump_stack(void) {
-	console_small_uint_t i = console_u_depth();
-	sprintf(msg+strlen(msg), "[%d] ", i);
-	while (i-- > 0)
-		sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_INT " ", console_u_get(i)); 
-}
 static char* check_console(const char* input, const char* output, console_rc_t rc_expected, console_small_uint_t depth_expected, ...) {
 	char inbuf[100];									// Copy input string as we are not meant to write to string literals.
 	va_list ap;
+	console_small_uint_t i;
 
 	strcpy(inbuf, input);
 	console_rc_t rc = consoleProcess(inbuf, NULL);		// Process input string.
@@ -133,24 +135,54 @@ static char* check_console(const char* input, const char* output, console_rc_t r
 	mu_assert_equal_str(print_output_get(), output);	// Verify output string...
 	
 	// Build error message for stack.
-	strcpy(msg, "Stack: expected: ");
-	dump_stack();
-	console_small_uint_t i = depth_expected;
-	sprintf(msg+strlen(msg), "; got: [%d] ", i);
-	va_start(ap, depth_expected);
-	while (i-- > 0) 
-		sprintf(msg+strlen(msg), "%" CONSOLE_FORMAT_INT " ", va_arg(ap, console_int_t)); 
-	va_end(ap);
+	mu_add_msg("Stack: [%d] ", console_u_depth());
+	i = console_u_depth();
+	while (i-- > 0)
+		mu_add_msg("%" CONSOLE_FORMAT_INT " ", console_u_get(i)); 
 
 	// Verify stack, starting with depth, then contents.
 	if (console_u_depth() != depth_expected) 
-		return msg;
+		return mu_msg;
 
 	va_start(ap, depth_expected);
 	i = console_u_depth();
 	while (i-- > 0) {
 		if (console_u_get(i) != va_arg(ap, console_int_t)) 
-			return msg;
+			return mu_msg;
+	}
+
+	return NULL;
+}
+
+static char* check_hex_string(const char* input, console_small_uint_t len_expected, ...) {
+	char inbuf[100];									// Copy input string as we are not meant to write to string literals.
+	va_list ap;
+	uint8_t* mem_ptr;
+	console_small_uint_t i;
+
+	strcpy(inbuf, input);
+	console_rc_t rc = consoleProcess(inbuf, NULL);		// Process input string.
+	mu_assert_equal_int(rc, CONSOLE_RC_OK);				// Verify return code...
+	mu_assert_equal_str(print_output_get(), "");		// Verify no output string...
+	mu_assert_equal_int(console_u_depth(), 1);
+
+	// Build error message for memory.
+	mem_ptr = (uint8_t*)console_u_tos();
+	mu_add_msg("Hex string: ");
+	i = *mem_ptr++;
+	while (i-- > 0)
+		mu_add_msg("%02X", *mem_ptr++); 
+
+	// Verify memory...
+	mem_ptr = (uint8_t*)console_u_tos();
+	if (*mem_ptr++ != len_expected)
+		return mu_msg;
+
+	va_start(ap, len_expected);
+	i = len_expected;
+	while (i-- > 0) {
+		if (*mem_ptr++ != va_arg(ap, console_int_t)) 
+			return mu_msg;
 	}
 
 	return NULL;
@@ -231,7 +263,7 @@ int main(int argc, char **argv) {
 	mu_run_test(check_print(CONSOLE_PRINT_CHAR, 'x', "x "));
 
 	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE|CONSOLE_PRINT_NO_SEP,		1235, "\n"));  // NO_SEP has no effect. 
-	mu_run_test(check_print((CONSOLE_PRINT_NO_SEP-1)|CONSOLE_PRINT_NO_SEP,	1235, ""));			// No output.
+	mu_run_test(check_print((CONSOLE_PRINT_NO_SEP-1)|CONSOLE_PRINT_NO_SEP,	1235, ""));		// No output for bad format..
 	mu_run_test(check_print(CONSOLE_PRINT_SIGNED|CONSOLE_PRINT_NO_SEP,		0, "0"));
 	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED|CONSOLE_PRINT_NO_SEP,	0, "+0"));
 	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP,			(console_int_t)"hello", "hello"));
@@ -310,6 +342,14 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("\"q\\n\\r\\ .\"", "q\n\r ",	CONSOLE_RC_OK,				0));			// Trailing \ ignored.
 	mu_run_test(check_console("\"\\1f .\"", "\x1f ",		CONSOLE_RC_OK,				0));			// Single character in hex `1f'. 
 	mu_run_test(check_console("\"\\1g .\"", "1g ",			CONSOLE_RC_OK,				0));			// Bad hex escape.
+
+	// Check hex string 
+	mu_run_test(check_console("&", "",						CONSOLE_RC_ERR_BAD_CMD,	0));				// Bad hex string.
+	mu_run_test(check_console("&1", "",						CONSOLE_RC_ERR_BAD_CMD,	0));				// Bad hex string.
+	mu_run_test(check_console("&1g", "",					CONSOLE_RC_ERR_BAD_CMD,	0));				// Bad hex string.
+	mu_run_test(check_console("&ff1g", "",					CONSOLE_RC_ERR_BAD_CMD,	0));				// Bad hex string.
+	mu_run_test(check_hex_string("&1a", 1, 0x1a));
+	mu_run_test(check_hex_string("&1a00", 2, 0x1a, 0x00));
 
 	// Number printing.
 	mu_run_test(check_console(".", "",						CONSOLE_RC_ERR_DSTK_UNF,	0));
@@ -399,8 +439,9 @@ int main(int argc, char **argv) {
 	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+1,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
 	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+2,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
 
-	printf(PSTR("Tests run: %d, failed: %d.\n"), tests_run, tests_fail);
-	return tests_fail;
+	mu_print_summary();
+
+	return mu_tests_fail;
 }
 
 
