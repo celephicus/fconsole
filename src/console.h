@@ -65,6 +65,9 @@ bool console_r_hex_string(char* cmd);
 // Essential commands that will always be required
 bool console_cmds_builtin(char* cmd);
 
+// Some "useful" commands used for testing and examples.
+bool console_cmds_example(char* cmd);
+
 // Optional help commands, will be empty if CONSOLE_WANT_HELP not defined.
 bool console_cmds_help(char* cmd);
 

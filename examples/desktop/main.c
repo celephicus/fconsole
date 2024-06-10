@@ -5,23 +5,6 @@
 
 #include "console.h"
 
-enum {
-	CONSOLE_RC_ERR_USER_EXIT = CONSOLE_RC_ERR_USER, // Exit from program
-};
-
-static bool console_cmds_user(char* cmd) {
-	switch (console_hash(cmd)) {
-		case /** + ( x1 x2 - x3) Add values: x3 = x1 + x2. **/ 0XB58E: console_binop(+); break;
-		case /** - ( x1 x2 - x3) Subtract values: x3 = x1 - x2. **/ 0XB588: console_binop(-); break;
-		case /** NEGATE ( d1 - d2) Negate signed value: d2 = -d1. **/ 0X7A79: console_unop(-); break;
-		case /** RAISE ( i - ) Raise value as exception. **/ 0X4069: console_raise((console_rc_t)console_u_pop()); break;
-		case /** EXIT ( - ?) Exit console. **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER_EXIT); break;
-		case /** # ( - ) Comment, rest of input ignored. **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
-		default: return false;
-	}
-	return true;
-}
-
 /* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 	can have potentially any hash value so could look like commands. */
 static const console_recogniser_func RECOGNISERS[] PROGMEM = {
@@ -33,7 +16,7 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 #ifdef CONSOLE_WANT_HELP
 	console_cmds_help, 
 #endif // CONSOLE_WANT_HELP
-	console_cmds_user,
+	console_cmds_example,
 	NULL
 };
 
@@ -75,7 +58,7 @@ int main(int argc, char **argv) {
 			fputs(" -> ", stdout); 				// Seperator string for output.
 			rc = consoleProcess(consoleAcceptBuffer(), &cmd);	// Process input string from input buffer filled by accept and record error code.
 			if (CONSOLE_RC_OK != rc) {			// If all went well then we get an OK status code.
-				if (CONSOLE_RC_ERR_USER_EXIT == rc) {
+				if (CONSOLE_RC_ERR_USER == rc) {
 					puts("Bye...");
 					break;
 				}

@@ -255,6 +255,30 @@ bool console_cmds_builtin(char* cmd) {
 	return true;
 }
 
+// Some "useful" commands used for testing and examples.
+bool console_cmds_example(char* cmd) {
+	switch (console_hash(cmd)) {
+		case /** + ( x1 x2 - x3) Add: x3 = x1 + x2. **/ 0XB58E: console_binop(+); break;
+		case /** - ( x1 x2 - x3) Subtract: x3 = x1 - x2. **/ 0XB588: console_binop(-); break;
+		case /** / ( d1 d2 - d3) Signed dvide: d3 = d1 / d2. **/ 0XB58A: {
+			const console_int_t rhs = console_u_pop(); if (0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO); 
+			console_u_tos() = console_u_tos() / rhs;
+		} break;
+		case /** U/ ( u1 u2 - u3) Signed dvide: u3 = u1 / u2. **/ 0X73DF: {
+			const console_uint_t rhs = (console_uint_t)console_u_pop(); if ((console_uint_t)0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO); 
+			console_u_tos() = (console_int_t)((console_uint_t)console_u_tos() / rhs);
+		} break;
+		case /** NEGATE ( d1 - d2) Negate signed value: d2 = -d1. **/ 0X7A79: console_unop(-); break;
+		case /** # ( - ) Comment, rest of input ignored. **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
+		case /** RAISE ( i - ) Raise value as exception. **/ 0X4069: console_raise((console_rc_t)console_u_pop()); break;
+		case /** EXIT ( - ?) Exit console. **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER); break;	// Custom exception.
+		case /** PICK (u - x) Copy stack item by index. **/ 0X13B4: console_u_tos() = console_u_get((console_small_uint_t)console_u_tos()+1); break;
+		case /** OVER (x1 x2 - x1 x2 x1) Copy second stack item. **/ 0X398B: console_u_push(console_u_nos()); break;
+		default: return false;
+	}
+	return true;
+}
+
 // Optional help commands.
 #ifdef CONSOLE_WANT_HELP
 
