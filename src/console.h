@@ -74,12 +74,14 @@ enum {
 	CONSOLE_RC_OK =				0,	// Returned by consoleProcess() for no errors and by consoleAccept() for a newline with no overflow.
 
 	// Errors: something has gone wrong...
-	CONSOLE_RC_ERR_BAD_CMD =	1,	// A command or value was not recognised.
-	CONSOLE_RC_ERR_NUM_OVF =	2,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds,
+	CONSOLE_RC_ERR_NO_CHEESE =	1,	// ++?????++ Out of Cheese Error. Redo From Start. Really only raised if you try raising an error code of zero.
+	CONSOLE_RC_ERR_NUM_OVF =	2,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds.
 	CONSOLE_RC_ERR_DSTK_UNF =	3,	// Stack underflowed (attempt to pop or examine too many items).
 	CONSOLE_RC_ERR_DSTK_OVF =	4,	// Stack overflowed (attempt to push too many items).
 	CONSOLE_RC_ERR_ACC_OVF =	5,	// Accept buffer has been sent more characters than it can hold. Only returned by consoleAccept().
 	CONSOLE_RC_ERR_BAD_IDX =	6,	// Index out of range.
+	CONSOLE_RC_ERR_BAD_CMD =	7,	// A command or value was not recognised.
+	CONSOLE_RC_ERR_DIV_ZERO = 	8,	// Divide by zero.
 	CONSOLE_RC_ERR_USER,			// Error codes available for the user.
 
 	// Status...

@@ -382,12 +382,15 @@ error:		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really e
 // Print description of error code.
 const char* consoleGetErrorDescription(console_rc_t err) {
 	switch(err) {
+
+		case CONSOLE_RC_ERR_NO_CHEESE: 	return PSTR(" ++?????++ Out of Cheese Error. Redo From Start");
 		case CONSOLE_RC_ERR_NUM_OVF: 	return PSTR("number overflow");
 		case CONSOLE_RC_ERR_DSTK_UNF: 	return PSTR("stack underflow");
 		case CONSOLE_RC_ERR_DSTK_OVF: 	return PSTR("stack overflow");
-		case CONSOLE_RC_ERR_BAD_CMD: 	return PSTR("unknown command");
 		case CONSOLE_RC_ERR_ACC_OVF: 	return PSTR("input buffer overflow");
 		case CONSOLE_RC_ERR_BAD_IDX:	return PSTR("index out of range");
+		case CONSOLE_RC_ERR_BAD_CMD: 	return PSTR("unknown command");
+		case CONSOLE_RC_ERR_DIV_ZERO: 	return PSTR("divide by zero");
 		default: return PSTR("??");
 	}
 }
