@@ -242,14 +242,14 @@ bool console_r_hex_string(char* cmd) {
 // Essential commands that will always be required
 bool console_cmds_builtin(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** . (d - ) Pop and print as signed decimal. **/ 0XB58B: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;
-		case /** U. (u - ) Pop and print as unsigned decimal, with leading `+'. **/ 0X73DE: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;
-		case /** $. (u - ) Pop and print as 4 hex digits with leading `$'. **/ 0X658F: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;
-		case /** ." (s - ) Pop and print string. **/ 0X66C9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		
-		case /** DEPTH ( - u) Push stack depth. **/ 0XB508: console_u_push(console_u_depth()); break;					
-		case /** CLEAR ( ... - <empty>) Remove all items from stack. **/ 0X9F9C: console_u_clear(); break;									
-		case /** DROP (x - ) Remove top item from stack. **/ 0X5C2C: console_u_pop(); break;										
-		case /** HASH (s - u) Pop string and push hash value. **/ 0X90B7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	
+		case /** . (d - ) Pop and print as signed decimal. **/ 0xb58b: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;
+		case /** U. (u - ) Pop and print as unsigned decimal, with leading `+'. **/ 0x73de: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;
+		case /** $. (u - ) Pop and print as 4 hex digits with leading `$'. **/ 0x658f: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;
+		case /** ." (s - ) Pop and print string. **/ 0x66c9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		
+		case /** DEPTH ( - u) Push stack depth. **/ 0xb508: console_u_push(console_u_depth()); break;					
+		case /** CLEAR ( ... - <empty>) Remove all items from stack. **/ 0x9f9c: console_u_clear(); break;									
+		case /** DROP (x - ) Remove top item from stack. **/ 0x5c2c: console_u_pop(); break;										
+		case /** HASH (s - u) Pop string and push hash value. **/ 0x90b7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	
 		default: return false;
 	}
 	return true;
@@ -262,14 +262,14 @@ bool console_cmds_builtin(char* cmd) {
 
 bool console_cmds_help(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** ??HELP ( - ) Print (wordy) help for all commands. **/ 0XB0B4: {
+		case /** ??HELP ( - ) Print (wordy) help for all commands. **/ 0xb0b4: {
 			const char* const * hh = &help_cmds[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_cmds)/sizeof(help_cmds[0]); i += 1, hh += 1) {
 				consolePrint(CONSOLE_PRINT_NEWLINE, 0);
 				consolePrint(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP, (console_int_t)pgm_read_ptr(hh));
 			}
 		} break;
-		case /** ?HELP ( - ) Print list of all commands. **/ 0X74CB: {
+		case /** ?HELP ( - ) Print list of all commands. **/ 0x74cb: {
 			const char* const * hh = &help_cmds[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_cmds)/sizeof(help_cmds[0]); i += 1, hh += 1) {
 				const char* str = (const char*)pgm_read_ptr(hh);
@@ -279,7 +279,7 @@ bool console_cmds_help(char* cmd) {
 				consolePrint(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP, ' ');
 			}
 		} break;
-		case /** HELP (s - ) Search for help on given command. **/ 0X7D54: {
+		case /** . (s - ) Search for help on given command. **/ 0xb58b: {
 			const uint16_t cmd_hash = console_hash((const char*)console_u_pop());
 			const uint16_t* hh = &help_hashes[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_hashes)/sizeof(help_hashes[0]); i += 1, hh += 1) {
@@ -340,7 +340,7 @@ void consoleInit(const console_recogniser_func* r_list) {
 }
 
 console_rc_t consoleProcess(char* str, char** current) {
-	char* volatile cmd;				// Necessary to avoid warning from setjmp clobber.
+	char* volatile cmd;				// Necessary to avoid warning from setjmp clobber variables optimised into registers.
 	char* volatile vstr = str;
 	console_rc_t command_rc;
 	
