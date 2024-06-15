@@ -1,53 +1,80 @@
 #! /usr/bin/python3
 
-# Open an input file and write it back.
-# 	case /** . **/ 0xb58b: console_print_signed_decimal(); break;
-# Lines that match `/** <PRINTABLE-CHARS> **/ 0x<hex-chars>:' have the hex chars replaced with a hash of the printable chars.
-import re, sys, os, glob
+import re, sys, os, glob, argparse
 
 PROGNAME = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+parser = argparse.ArgumentParser(prog=PROGNAME, description="""\
+Read a set of files, and update lines matching a pattern to include a hash of 
+the command name, and write a header file with help text as an string array. 
+Lines that match `/** <command> <help>**/ 0x<hex-chars>:' where <command> 
+consists only of printable chars and <help> is any text have the hex chars 
+replaced with a hash of the chars in <command>.\
+""")
+parser.add_argument('files', nargs='+', help='filenames or patterns to process') 
+parser.add_argument('-q', '--quiet', action='store_true', help='print no progress messages')
+
+args = parser.parse_args()
+
+def message(msg):
+	if not args.quiet:
+		print(f"{msg}", end='', file=sys.stderr)
+def error(msg):
+	print(f"{PROGNAME}: Error: {msg}", file=sys.stderr)
+	sys.exit()
 
 HELP_FN = 'console_help.autogen.inc'
 
-cmds = {}
-def subber_hash(m):
-	HASH_START, HASH_MULT = 5381, 33 # No basis for these numbers, they just seem to work.
+def hash(s):
+	HASH_START, HASH_MULT = 5381, 33 # DJB2 algorithm, original code from a cave painting.
 	h = HASH_START;
-	cmd = m.group(1).upper()
-	help = m.group(2).strip()
-	for c in cmd:
+	for c in s:
 		h = ((h * HASH_MULT) & 0xffff) ^ ord(c)
+	return h
 
-	if cmd in cmds:
-		error(f"duplicate hash for `{cmd}")   
-	cmds[h] = (cmd, help)
-	return f"/** {cmd} {help} **/ 0X{h:04X}"
+cmds = {} # cmd-hash: (file, cmd, help)
 
-output_dir = None
-for infile in sum([glob.glob(_, recursive=True) for _ in sys.argv[1:]], []):
-	text = open(infile, 'rt').read()
-	if output_dir is None:
-		output_dir = os.path.dirname(infile)
-	existing = text
+output_dir = None 	# Set to none so that output dir is that of first file processed.
+for file_pattern in args.files:
+	file_list = glob.glob(file_pattern)
+	if not file_list:
+		error(f"file/pattern `{file_pattern}'' did not match any files.")
+	for infile in file_list:
+		with open(infile, 'rt') as f:
+			message(f"{PROGNAME}: Processing {infile}: ")
+			if output_dir is None:
+				output_dir = os.path.dirname(infile)
+			text = f.read()
+			existing = text
 
-	text = re.sub(r'''
-	  /\*\*\s*		# `/** <spaces>'
-	  (\S+)			# Command name, any non-whitespace characters.
-	  (.*)			# Help text.
-	  \*\*/			# `**/'
-	  \s*			# More spaces.
-	  (0[x])?([0-9a-z]*)	# Hex number withleading `0x'.
-	''', subber_hash, text, flags=re.I|re.X)
+		def subber_hash(m):		# Defined here as we need infile.
+			cmd = m.group(1).upper()
+			help_text = m.group(2).strip()
+			h = hash(cmd)
 
-	print(f"{PROGNAME}: Processing {infile}: ", file=sys.stderr, end='')
-	if text != existing:
-		print("updated.", file=sys.stderr)
-		open(infile, 'wt').write(text)
-	else:
-		print("skipped as unchanged.", file=sys.stderr)
+			if h in cmds:
+				error(f"duplicate hash for `{cmd}' from `{cmds[h][1]}' in {cmds[h][0]}")   
+			cmds[h] = (infile, cmd, help_text)
+			return f"/** {cmd} {help_text} **/ 0x{h:04x}"
+
+		text = re.sub(r'''
+		  /\*\* \s*				# `/**<spaces>'
+		  (\S+)					# Command name, any non-whitespace characters.
+		  (.*)					# Help text, we strip leading & trailing wsp.
+		  \*\*/					# `**/'
+		  \s*					# More spaces.
+		  (0x)?[0-9a-z]+		# Decimal or hex number.
+		''', subber_hash, text, flags=re.I|re.X)
+
+		if text != existing:
+			message("updated.")
+			with open(infile, 'wt') as f:
+				f.write(text)
+		else:
+			message("skipped as unchanged.")
+		message('\n')
 
 def ss(s): return s.replace('"', '\\"')
-help_decl_cmd_text = '\n'.join([f'static const char cmd_help_{h:04X}[] PROGMEM = PSTR("{ss(c[0] + " " + c[1])}");' for h, c in cmds.items()])
+help_decl_cmd_text = '\n'.join([f'static const char cmd_help_{h:04X}[] PROGMEM = PSTR("{ss(c[1] + " " + c[2])}");' for h, c in cmds.items()])
 help_decl_cmds = '\n'.join([f'    cmd_help_{h:04X},' for h in cmds])
 help_decl_hashes = '\n'.join([f'    0x{h:04X},' for h in cmds])
 				
