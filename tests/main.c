@@ -31,12 +31,12 @@ int mu_tests_run, mu_tests_fail;
 	mu_test_teardown();	/* User teardown hook. */					\
 } while (0)
 
-#define mu_assert_equal_str(val_, expected_) do { 																	\
-	if (0 != strcmp((val_), (expected_))) 																			\
+#define mu_assert_equal_str(val_, expected_) do { 																				\
+	if (0 != strcmp((val_), (expected_))) 																						\
   		return mu_add_msg(PSTR("%s != %s; expected `%s', got `%s'."), mu_mkstr(val_), mu_mkstr(expected_), expected_, val_); 	\
 } while (0)
-#define mu_assert_equal_int(val_, expected_) do { 																	\
-	if ((int)(val_) != (int)(expected_)) 																			\
+#define mu_assert_equal_int(val_, expected_) do { 																				\
+	if ((int)(val_) != (int)(expected_)) 																						\
   		return mu_add_msg(PSTR("%s != %s; expected `%d', got `%d'."), mu_mkstr(val_), mu_mkstr(expected_), expected_, val_); 	\
 } while (0)
 
@@ -49,21 +49,6 @@ enum {
 	CONSOLE_RC_ERR_USER_EXIT = CONSOLE_RC_ERR_USER, // Exit from program
 };
 
-static bool console_cmds_user(char* cmd) {
-	switch (console_hash(cmd)) {
-		case /** + ( x1 x2 - x3) Add values: x3 = x1 + x2. **/ 0XB58E: console_binop(+); break;
-		case /** - ( x1 x2 - x3) Subtract values: x3 = x1 - x2. **/ 0XB588: console_binop(-); break;
-		case /** NEGATE ( d1 - d2) Negate signed value: d2 = -d1. **/ 0X7A79: console_unop(-); break;
-		case /** # ( - ) Comment, rest of input ignored. **/ 0XB586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
-		case /** RAISE ( i - ) Raise value as exception. **/ 0X4069: console_raise((console_rc_t)console_u_pop()); break;
-		case /** EXIT ( - ?) Exit console. **/ 0XC745: console_raise(CONSOLE_RC_ERR_USER_EXIT); break;
-		case /** PICK (u - x) Copy stack item by index. **/ 0X13B4: console_u_tos() = console_u_get((console_small_uint_t)console_u_tos()+1); break;
-		case /** OVER (x1 x2 - x1 x2 x1) Copy second stack item. **/ 0X398B: console_u_push(console_u_nos()); break;
-		default: return false;
-	}
-	return true;
-}
-
 /* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 	can have potentially any hash value so could look like commands. */
 static const console_recogniser_func RECOGNISERS[] PROGMEM = {
@@ -75,7 +60,7 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 #ifdef CONSOLE_WANT_HELP
 	console_cmds_help, 
 #endif // CONSOLE_WANT_HELP
-	console_cmds_user,
+	console_cmds_example,
 	NULL
 };
 
@@ -320,16 +305,16 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("$", "",						CONSOLE_RC_ERR_BAD_CMD,	0));
 	mu_run_test(check_console("$1", "",						CONSOLE_RC_OK,				1, (console_int_t)1));
 	if (sizeof(console_int_t) == 2) {
-		mu_run_test(check_console("$FFFF", "",					CONSOLE_RC_OK,				1, 0xffff));
-		mu_run_test(check_console("$10000", "",					CONSOLE_RC_ERR_NUM_OVF,	0));
+		mu_run_test(check_console("$FFFF", "",				CONSOLE_RC_OK,				1, 0xffff));
+		mu_run_test(check_console("$10000", "",				CONSOLE_RC_ERR_NUM_OVF,	0));
 	}
 	else if (sizeof(console_int_t) == 4) {
-		mu_run_test(check_console("$FFFFFFFF", "",					CONSOLE_RC_OK,				1, 0xffffffff));
-		mu_run_test(check_console("$100000000", "",					CONSOLE_RC_ERR_NUM_OVF,	0));
+		mu_run_test(check_console("$FFFFFFFF", "",			CONSOLE_RC_OK,				1, 0xffffffff));
+		mu_run_test(check_console("$100000000", "",			CONSOLE_RC_ERR_NUM_OVF,	0));
 	}
 	else if (sizeof(console_int_t) == 8) {
-		mu_run_test(check_console("$FFFFFFFFFFFFFFFF", "",					CONSOLE_RC_OK,				1, 0xffffffffffffffff));
-		mu_run_test(check_console("$10000000000000000", "",					CONSOLE_RC_ERR_NUM_OVF,	0));
+		mu_run_test(check_console("$FFFFFFFFFFFFFFFF", "",	CONSOLE_RC_OK,				1, 0xffffffffffffffff));
+		mu_run_test(check_console("$10000000000000000", "",	CONSOLE_RC_ERR_NUM_OVF,	0));
 	}
 	else
 		mu_run_test("console_int_t not 16, 32 or 64 bit!");
@@ -358,44 +343,44 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("0 U.", "+0 ",				CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("$.", "",						CONSOLE_RC_ERR_DSTK_UNF,	0));
 	if (sizeof(console_int_t) == 2) {
-		mu_run_test(check_console("32767 .", "32767 ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("-32768 .", "-32768 ",		CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("+65535 U.", "+65535 ",		CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("0 $.", "$0000 ",				CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$000F $.", "$000F ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$00FF $.", "$00FF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$0FFF $.", "$0FFF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$FFFF $.", "$FFFF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$AF19 $.", "$AF19 ",			CONSOLE_RC_OK,				0));
+		mu_run_test(check_console("32767 .", "32767 ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("-32768 .", "-32768 ",	CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("+65535 U.", "+65535 ",	CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("0 $.", "$0000 ",			CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$000F $.", "$000F ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$00FF $.", "$00FF ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$0FFF $.", "$0FFF ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$FFFF $.", "$FFFF ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$AF19 $.", "$AF19 ",		CONSOLE_RC_OK,		0));
 	}
 	else if (sizeof(console_int_t) == 4) {
-		mu_run_test(check_console("2147483647 .", "2147483647 ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("-2147483648 .", "-2147483648 ",		CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("+4294967295 U.", "+4294967295 ",		CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("0 $.", "$00000000 ",				CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$000F $.", "$0000000F ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$00FF $.", "$000000FF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$0FFF $.", "$00000FFF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$FFFF $.", "$0000FFFF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$DE32AF19 $.", "$DE32AF19 ",			CONSOLE_RC_OK,				0));
+		mu_run_test(check_console("2147483647 .", "2147483647 ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("-2147483648 .", "-2147483648 ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("+4294967295 U.", "+4294967295 ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("0 $.", "$00000000 ",					CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$000F $.", "$0000000F ",				CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$00FF $.", "$000000FF ",				CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$0FFF $.", "$00000FFF ",				CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$FFFF $.", "$0000FFFF ",				CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$DE32AF19 $.", "$DE32AF19 ",			CONSOLE_RC_OK,		0));
 	}
 	else if (sizeof(console_int_t) == 8) {
-		mu_run_test(check_console("9223372036854775807 .", "9223372036854775807 ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("-9223372036854775808 .", "-9223372036854775808 ",		CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("+18446744073709551615 U.", "+18446744073709551615 ",		CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("0 $.", "$0000000000000000 ",				CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$000F $.", "$000000000000000F ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$00FF $.", "$00000000000000FF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$0FFF $.", "$0000000000000FFF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$FFFF $.", "$000000000000FFFF ",			CONSOLE_RC_OK,				0));
-		mu_run_test(check_console("$DE32AF19DE32AF19 $.", "$DE32AF19DE32AF19 ",			CONSOLE_RC_OK,				0));
+		mu_run_test(check_console("9223372036854775807 .", "9223372036854775807 ",		CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("-9223372036854775808 .", "-9223372036854775808 ",	CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("+18446744073709551615 U.", "+18446744073709551615 ",	CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("0 $.", "$0000000000000000 ",							CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$000F $.", "$000000000000000F ",						CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$00FF $.", "$00000000000000FF ",						CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$0FFF $.", "$0000000000000FFF ",						CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$FFFF $.", "$000000000000FFFF ",						CONSOLE_RC_OK,		0));
+		mu_run_test(check_console("$DE32AF19DE32AF19 $.", "$DE32AF19DE32AF19 ",			CONSOLE_RC_OK,		0));
 	}
 	else
 		mu_run_test("console_int_t not 16 or 32 bit!");
 
 	// Stack over/under flow.
 	mu_run_test(check_console("DROP", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
-	mu_run_test(check_console("1 2 3 4 5 ", "",		CONSOLE_RC_ERR_DSTK_OVF,	4, (console_int_t)1, (console_int_t)2, (console_int_t)3, (console_int_t)4));
+	mu_run_test(check_console("1 2 3 4 5 ", "",				CONSOLE_RC_ERR_DSTK_OVF,	4, (console_int_t)1, (console_int_t)2, (console_int_t)3, (console_int_t)4));
 
 	// Commands
 	mu_run_test(check_console("1 2 DROP", "",				CONSOLE_RC_OK,				1, (console_int_t)1));
@@ -425,10 +410,32 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("1 2 -", "",					CONSOLE_RC_OK,				1, (console_int_t)-1));
 	mu_run_test(check_console("NEGATE", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
 	mu_run_test(check_console("1 NEGATE", "",				CONSOLE_RC_OK,				1, (console_int_t)-1));
+
+	// Signed Divide.
+	mu_run_test(check_console("1 /", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
+	mu_run_test(check_console("/", "",						CONSOLE_RC_ERR_DSTK_UNF,	0));
+	mu_run_test(check_console("-123 10 /", "",				CONSOLE_RC_OK,				1, (console_int_t)-12));
+	mu_run_test(check_console("-123 0 /", "",				CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)-123));
+	mu_run_test(check_console("0 0 /", "",					CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)0));
+	
+	// Unsigned Divide.
+	mu_run_test(check_console("1 U/", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
+	mu_run_test(check_console("U/", "",						CONSOLE_RC_ERR_DSTK_UNF,	0));
+	if (sizeof(console_int_t) == 2) 
+		mu_run_test(check_console("$fffe 16 U/", "",		CONSOLE_RC_OK,				1, (console_int_t)0xfff));
+	if (sizeof(console_int_t) == 4) 
+		mu_run_test(check_console("$fffffffe 16 U/", "",	CONSOLE_RC_OK,				1, (console_int_t)0xfffffff));
+	if (sizeof(console_int_t) == 8) 
+		mu_run_test(check_console("$fffffffffffffffe 16 U/", "", CONSOLE_RC_OK,			1, (console_int_t)0xfffffffffffffff));
+	else
+		mu_run_test("console_int_t not 16 or 32 bit!");
+	mu_run_test(check_console("123 0 U/", "",				CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)123));
+	mu_run_test(check_console("0 0 U/", "",					CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)0));
 	
 	// Comments & raise.
-	mu_run_test(check_console("EXIT", "",					CONSOLE_RC_ERR_USER_EXIT,	0));
+	mu_run_test(check_console("EXIT", "",					CONSOLE_RC_ERR_USER,		0));
 	mu_run_test(check_console("127 RAISE", "",				127,						0));
+	mu_run_test(check_console("0 RAISE", "",				CONSOLE_RC_ERR_NO_CHEESE,	0));
 	mu_run_test(check_console("1 2 # 3 4", "",				CONSOLE_RC_OK,				2, (console_int_t)1, (console_int_t)2));
 
 	// Test Accept
