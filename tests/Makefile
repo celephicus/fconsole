@@ -18,12 +18,15 @@ $(shell ./prebuild.sh)
 
 all: $(TARGET)
 
-$(TARGET): main.o console.o
-	$(CC) $(GCOV_LDFLAGS) -o $@ main.o console.o
+$(TARGET): main.o console.o minunit.o
+	$(CC) $(GCOV_LDFLAGS) -o $@ main.o console.o minunit.o
 
 #	$(SRCDIR)/console-mk.py $(SRCDIR)/console.c
 
 main.o: main.c $(HEADERS)  
+	$(CC) $(CFLAGS) $(GCOV_CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@	
+
+minunit.o: minunit.c $(HEADERS)  
 	$(CC) $(CFLAGS) $(GCOV_CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@	
 
 console.o: $(SRCDIR)/console.c $(HEADERS) 

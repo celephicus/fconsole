@@ -6,43 +6,7 @@
 
 #include "console.h"
 
-// Test code from adapted from minunit: http://www.jera.com/techinfo/jtns/jtn002.html
-static char mu_msg[200];
-static void mu_clear_msg(void) { mu_msg[0] = '\0'; }
-static char* mu_add_msg(const char* fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	vsprintf(mu_msg + strlen(mu_msg), fmt, ap);
-	return mu_msg;
-}
-
-int mu_tests_run, mu_tests_fail;
-#define mu_mkstr(s_) #s_
-#define mu_init() { mu_tests_run = mu_tests_fail = 0; }
-#define mu_run_test(_test) do { 									\
-	mu_clear_msg();													\
-	mu_test_setup();	/* User setup hook. */						\
-	mu_tests_run++; 												\
-	const char* fail_msg = _test; 									\
-	if (fail_msg) { 												\
-		mu_tests_fail++;											\
-		printf(PSTR("Fail: " mu_mkstr(_test) ": %s\n"), fail_msg); 	\
-	} 																\
-	mu_test_teardown();	/* User teardown hook. */					\
-} while (0)
-
-#define mu_assert_equal_str(val_, expected_) do { 																				\
-	if (0 != strcmp((val_), (expected_))) 																						\
-  		return mu_add_msg(PSTR("%s != %s; expected `%s', got `%s'."), mu_mkstr(val_), mu_mkstr(expected_), expected_, val_); 	\
-} while (0)
-#define mu_assert_equal_int(val_, expected_) do { 																				\
-	if ((int)(val_) != (int)(expected_)) 																						\
-  		return mu_add_msg(PSTR("%s != %s; expected `%d', got `%d'."), mu_mkstr(val_), mu_mkstr(expected_), expected_, val_); 	\
-} while (0)
-
-static void	mu_print_summary(void) {
-	printf(PSTR("Tests run: %d, failed: %d.\n"), mu_tests_run, mu_tests_fail);
-}
+#include "minunit.h"
 
 // Recogniser to support our tests.
 enum {
@@ -85,13 +49,13 @@ void consolePrint(console_small_uint_t opt, console_int_t x) {
 	print_output_p += nch;
 }
 
-static void mu_test_setup(void) {
-	mu_msg[0] = '\0'; 										// Clear message buffer.
+const char* mu_test_setup(void) {
 	print_output_init();
 	consoleInit(RECOGNISERS);							// Setup console.
 	consoleAcceptClear();								// NOT done by console Init. 
+	return NULL;
 }
-static void mu_test_teardown(void) {
+void mu_test_teardown(void) {
 	/* empty */
 }
 
@@ -196,7 +160,7 @@ static char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_e
 
 int main(int argc, char **argv) {
 	(void)argc; (void)argv;
-	printf(PSTR("Arduino Console Unit Tests: %u bit.\n"), (unsigned)(8 * sizeof(console_int_t)));
+	printf(PSTR("Console Unit Tests: %u bit.\n"), (unsigned)(8 * sizeof(console_int_t)));
 
 	mu_init();
 
