@@ -77,7 +77,7 @@ enum {
 	CONSOLE_RC_OK =				0,	// Returned by consoleProcess() for no errors and by consoleAccept() for a newline with no overflow.
 
 	// Errors: something has gone wrong...
-	CONSOLE_RC_ERR_NO_CHEESE =	1,	// ++?????++ Out of Cheese Error. Redo From Start. Really only raised if you try raising an error code of zero.
+	CONSOLE_RC_ERR_NO_CHEESE =	1,	// Out of Cheese Error: only raised if you try raising an error code of zero.
 	CONSOLE_RC_ERR_NUM_OVF =	2,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds.
 	CONSOLE_RC_ERR_DSTK_UNF =	3,	// Stack underflowed (attempt to pop or examine too many items).
 	CONSOLE_RC_ERR_DSTK_OVF =	4,	// Stack overflowed (attempt to push too many items).
@@ -137,8 +137,13 @@ void console_u_push(console_int_t x);
 void console_u_clear(void);
 
 /* Some helper macros for commands. */
-#define console_binop(op_)	{ const console_int_t rhs = console_u_pop(); console_u_tos() = console_u_tos() op_ rhs; } 	// Implement a binary operator.
-#define console_unop(op_)	{ console_u_tos() = op_ console_u_tos(); }											// Implement a unary operator.
+#define console_binop(op_)	{ const console_int_t rhs = console_u_pop(); console_u_tos() = console_u_tos() op_ rhs; } 	// Implement a signed binary operator.
+#define console_u_binop(op_)	{ \
+  const console_uint_t rhs = (console_uint_t)console_u_pop(); \
+  console_u_tos() = (console_int_t)((console_uint_t)console_u_tos() op_ rhs);	\
+} 	// Implement an unsigned binary operator.
+#define console_u_unop(op_)	{ console_u_tos() = (console_int_t)(op_ (console_uint_t)console_u_tos()); }											// Implement a signed unary operator.
+#define console_unop(op_)	{ console_u_tos() = op_ console_u_tos(); }											// Implement a signed unary operator.
 
 // Following functions are exposed for testing only.
 //

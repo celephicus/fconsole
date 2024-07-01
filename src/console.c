@@ -45,13 +45,6 @@ static console_context_t f_console_ctx;
 #define console_can_pop(n_) (f_console_ctx.sp < (CONSOLE_STACKBASE - (n_) + 1))
 #define console_can_push(n_) (f_console_ctx.sp >= &f_console_ctx.dstack[0 + (n_)])
 
-// State for consoleAccept(). Done seperately as if not used the linker will remove it.
-typedef struct {
-	char inbuf[CONSOLE_INPUT_BUFFER_SIZE + 1];
-	console_small_uint_t inbidx;
-} accept_context_t;
-static accept_context_t f_accept_context;
-
 // Call on error, thanks to the magic of longjmp() it will return to the last setjmp with the error code.
 void console_raise(console_rc_t rc) {
 	longjmp(f_console_ctx.jmpbuf, rc);
@@ -258,19 +251,21 @@ bool console_cmds_builtin(char* cmd) {
 // Some "useful" commands used for testing and examples.
 bool console_cmds_example(char* cmd) {
 	switch (console_hash(cmd)) {
-		case /** + ( x1 x2 - x3) Add: x3 = x1 + x2. **/ 0xb58e: console_binop(+); break;
-		case /** - ( x1 x2 - x3) Subtract: x3 = x1 - x2. **/ 0xb588: console_binop(-); break;
-		case /** / ( d1 d2 - d3) Signed dvide: d3 = d1 / d2. **/ 0xb58a: {
+		case /** + (x1 x2 - x3) Add: x3 = x1 + x2. **/ 0xb58e: console_binop(+); break;
+		case /** - (x1 x2 - x3) Subtract: x3 = x1 - x2. **/ 0xb588: console_binop(-); break;
+		case /** * (d1 d2 - d3) Signed multiply: d3 = d1 * d2. **/ 0xb58f: console_binop(*); break;
+		case /** RSHIFT (u1 n - u2) Logical bitwise shift right: u2 = u1 >> n. **/ 0x6b97: console_u_binop(>>); break;
+		case /** / (d1 d2 - d3) Signed dvide: d3 = d1 / d2. **/ 0xb58a: {
 			const console_int_t rhs = console_u_pop(); if (0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO); 
 			console_u_tos() = console_u_tos() / rhs;
 		} break;
-		case /** U/ ( u1 u2 - u3) Signed dvide: u3 = u1 / u2. **/ 0x73df: {
+		case /** U/ (u1 u2 - u3) Unsigned divide: u3 = u1 / u2. **/ 0x73df: {
 			const console_uint_t rhs = (console_uint_t)console_u_pop(); if ((console_uint_t)0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO); 
 			console_u_tos() = (console_int_t)((console_uint_t)console_u_tos() / rhs);
 		} break;
-		case /** NEGATE ( d1 - d2) Negate signed value: d2 = -d1. **/ 0x7a79: console_unop(-); break;
+		case /** NEGATE (d1 - d2) Negate signed value: d2 = -d1. **/ 0x7a79: console_unop(-); break;
 		case /** # ( - ) Comment, rest of input ignored. **/ 0xb586: console_raise(CONSOLE_RC_STAT_IGN_EOL); break;
-		case /** RAISE ( i - ) Raise value as exception. **/ 0x4069: console_raise((console_rc_t)console_u_pop()); break;
+		case /** RAISE (i - ) Raise value as exception. **/ 0x4069: console_raise((console_rc_t)console_u_pop()); break;
 		case /** EXIT ( - ?) Exit console. **/ 0xc745: console_raise(CONSOLE_RC_ERR_USER); break;	// Custom exception.
 		case /** PICK (u - x) Copy stack item by index. **/ 0x13b4: console_u_tos() = console_u_get((console_small_uint_t)console_u_tos()+1); break;
 		case /** OVER (x1 x2 - x1 x2 x1) Copy second stack item. **/ 0x398b: console_u_push(console_u_nos()); break;
@@ -406,7 +401,6 @@ error:		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really e
 // Print description of error code.
 const char* consoleGetErrorDescription(console_rc_t err) {
 	switch(err) {
-
 		case CONSOLE_RC_ERR_NO_CHEESE: 	return PSTR(" ++?????++ Out of Cheese Error. Redo From Start");
 		case CONSOLE_RC_ERR_NUM_OVF: 	return PSTR("number overflow");
 		case CONSOLE_RC_ERR_DSTK_UNF: 	return PSTR("stack underflow");
@@ -415,11 +409,18 @@ const char* consoleGetErrorDescription(console_rc_t err) {
 		case CONSOLE_RC_ERR_BAD_IDX:	return PSTR("index out of range");
 		case CONSOLE_RC_ERR_BAD_CMD: 	return PSTR("unknown command");
 		case CONSOLE_RC_ERR_DIV_ZERO: 	return PSTR("divide by zero");
-		default: return PSTR("??");
+		default: 						return PSTR("??");
 	}
 }
 
 // Input functions.
+// State for consoleAccept(). Done seperately as if not used the linker will remove it.
+typedef struct {
+	char inbuf[CONSOLE_INPUT_BUFFER_SIZE + 1];
+	console_small_uint_t inbidx;
+} accept_context_t;
+static accept_context_t f_accept_context;
+
 void consoleAcceptClear() {
 	f_accept_context.inbidx = 0;
 }

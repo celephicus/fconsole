@@ -9,7 +9,7 @@ CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogic
 # Where?
 SRCDIR = ../../src
 INCLUDES := -I. -I$(SRCDIR)
-TARGET := tests
+TARGET := desktop
 
 SRCS = console.c minunit.h main.c 
 

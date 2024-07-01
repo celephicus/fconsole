@@ -8,13 +8,15 @@ static const char cmd_help_B508[] PROGMEM = PSTR("DEPTH ( - u) Push stack depth.
 static const char cmd_help_9F9C[] PROGMEM = PSTR("CLEAR ( ... - <empty>) Remove all items from stack.");
 static const char cmd_help_5C2C[] PROGMEM = PSTR("DROP (x - ) Remove top item from stack.");
 static const char cmd_help_90B7[] PROGMEM = PSTR("HASH (s - u) Pop string and push hash value.");
-static const char cmd_help_B58E[] PROGMEM = PSTR("+ ( x1 x2 - x3) Add: x3 = x1 + x2.");
-static const char cmd_help_B588[] PROGMEM = PSTR("- ( x1 x2 - x3) Subtract: x3 = x1 - x2.");
-static const char cmd_help_B58A[] PROGMEM = PSTR("/ ( d1 d2 - d3) Signed dvide: d3 = d1 / d2.");
-static const char cmd_help_73DF[] PROGMEM = PSTR("U/ ( u1 u2 - u3) Signed dvide: u3 = u1 / u2.");
-static const char cmd_help_7A79[] PROGMEM = PSTR("NEGATE ( d1 - d2) Negate signed value: d2 = -d1.");
+static const char cmd_help_B58E[] PROGMEM = PSTR("+ (x1 x2 - x3) Add: x3 = x1 + x2.");
+static const char cmd_help_B588[] PROGMEM = PSTR("- (x1 x2 - x3) Subtract: x3 = x1 - x2.");
+static const char cmd_help_B58F[] PROGMEM = PSTR("* (d1 d2 - d3) Signed multiply: d3 = d1 * d2.");
+static const char cmd_help_6B97[] PROGMEM = PSTR("RSHIFT (u1 n - u2) Logical bitwise shift right: u2 = u1 >> n.");
+static const char cmd_help_B58A[] PROGMEM = PSTR("/ (d1 d2 - d3) Signed dvide: d3 = d1 / d2.");
+static const char cmd_help_73DF[] PROGMEM = PSTR("U/ (u1 u2 - u3) Unsigned divide: u3 = u1 / u2.");
+static const char cmd_help_7A79[] PROGMEM = PSTR("NEGATE (d1 - d2) Negate signed value: d2 = -d1.");
 static const char cmd_help_B586[] PROGMEM = PSTR("# ( - ) Comment, rest of input ignored.");
-static const char cmd_help_4069[] PROGMEM = PSTR("RAISE ( i - ) Raise value as exception.");
+static const char cmd_help_4069[] PROGMEM = PSTR("RAISE (i - ) Raise value as exception.");
 static const char cmd_help_C745[] PROGMEM = PSTR("EXIT ( - ?) Exit console.");
 static const char cmd_help_13B4[] PROGMEM = PSTR("PICK (u - x) Copy stack item by index.");
 static const char cmd_help_398B[] PROGMEM = PSTR("OVER (x1 x2 - x1 x2 x1) Copy second stack item.");
@@ -33,6 +35,8 @@ static const char* const help_cmds[] PROGMEM = {
     cmd_help_90B7,
     cmd_help_B58E,
     cmd_help_B588,
+    cmd_help_B58F,
+    cmd_help_6B97,
     cmd_help_B58A,
     cmd_help_73DF,
     cmd_help_7A79,
@@ -57,6 +61,8 @@ static const uint16_t help_hashes[] PROGMEM = {
     0x90B7,
     0xB58E,
     0xB588,
+    0xB58F,
+    0x6B97,
     0xB58A,
     0x73DF,
     0x7A79,
