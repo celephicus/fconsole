@@ -8,11 +8,6 @@
 
 #include "minunit_config.h"
 
-// Macro for delaring a constant string. Only required for gcc-avr with its PSTR() macro.
-#ifndef MINUNIT_DECL_STR
-#define MINUNIT_DECL_STR(s_) (s_)
-#endif
-
 // Helpers, not intended for calling directly.
 extern char mu_msg[];
 void mu_clear_msg(void);
