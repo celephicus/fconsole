@@ -33,6 +33,15 @@ void consoleInit(const console_recogniser_func* r_list);
 
 // Function to print on the output stream. You must supply this. An example is in a comment in console.cpp. Unknown options are ignored and cause no output.
 enum {
+<<<<<<< HEAD
+	CONSOLE_PRINT_NEWLINE,
+	CONSOLE_PRINT_SIGNED,
+	CONSOLE_PRINT_UNSIGNED,
+	CONSOLE_PRINT_HEX,
+	CONSOLE_PRINT_STR,
+	CONSOLE_PRINT_STR_P,
+	CONSOLE_PRINT_CHAR,
+=======
 	CONSOLE_PRINT_NEWLINE,		// Prints a newline, second arg ignored, no seperator is printed.
 	CONSOLE_PRINT_SIGNED,		// Prints second arg as a signed integer, e.g `-123 ', `0 ', `456 ', note trailing SPACE.
 	CONSOLE_PRINT_UNSIGNED,		// Print second arg as an unsigned integer, e.g `+0 ', `+123 ', note trailing SPACE.
@@ -41,6 +50,7 @@ enum {
 	CONSOLE_PRINT_STR_P,		// Print second arg as pointer to string in PROGMEM, with trailing space.
 	CONSOLE_PRINT_CHAR,			// Print second arg as char, with trailing space.
 	CONSOLE_PRINT_NO_SEP = 0x80	// AND with option to _NOT_ print a trailing space.
+>>>>>>> 3b07a454643f1f2d24155db7f5009c8b8c54b6a3
 };
 void consolePrint(console_small_uint_t opt, console_int_t x);
 

@@ -1,2 +1,2 @@
 # Uninstall the library.
-arduino-cli lib uninstall Fconsole
+arduino-cli lib uninstall arduino-console
