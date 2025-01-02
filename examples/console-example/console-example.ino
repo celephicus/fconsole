@@ -1,66 +1,36 @@
 #include <Arduino.h>
 
 #include "console.h"
+#include "console-internals.h"
+#include "FConsole.h"
 
-#include <Stream.h>
-#include <stdarg.h>
-#include <stdio.h>
+// Needed for user handler.
 
-#define CONSOLE_OUTPUT_STREAM Serial
-void consolePrint(uint8_t s, console_cell_t x) {
-	switch (s) {
-		case CONSOLE_PRINT_NEWLINE:		CONSOLE_OUTPUT_STREAM.print(F("\r\n")); (void)x; break;
-		case CONSOLE_PRINT_SIGNED:		CONSOLE_OUTPUT_STREAM.print(x, DEC); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_UNSIGNED:	CONSOLE_OUTPUT_STREAM.print('+'); CONSOLE_OUTPUT_STREAM.print((console_ucell_t)x, DEC); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_HEX:			CONSOLE_OUTPUT_STREAM.print('$'); {
-											console_ucell_t m = 0xf;
-											do {
-												if ((console_ucell_t)x <= m) CONSOLE_OUTPUT_STREAM.print(0);
-												m = (m << 4) | 0xf;
-											} while (CONSOLE_UCELL_MAX != m);
-										} CONSOLE_OUTPUT_STREAM.print((console_ucell_t)x, HEX); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_STR:			CONSOLE_OUTPUT_STREAM.print((const char*)x); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		case CONSOLE_PRINT_STR_P:		CONSOLE_OUTPUT_STREAM.print((const __FlashStringHelper*)x); CONSOLE_OUTPUT_STREAM.print(' '); break;
-		default:						/* ignore */; break;
+static bool console_cmds_user(char* cmd) {
+	switch (console_hash(cmd)) {
+		case /** + **/ 0XB58E: console_binop(+); break;
+		case /** - **/ 0XB588: console_binop(-); break;
+		case /** NEGATE **/ 0X7A79: console_unop(-); break;
+		case /** # **/ 0XB586: console_raise(CONSOLE_RC_STATUS_IGNORE_TO_EOL); break;
+		case /** LED **/ 0XDC88: digitalWrite(LED_BUILTIN, !!console_u_pop()); break;
+		default: return false;
 	}
+	return true;
 }
-
-static void print_console_prompt() { consolePrint(CONSOLE_PRINT_NEWLINE, 0); consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(">"));}
-static void print_console_seperator() {	 consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(" -> ")); }
 
 void setup() {
 	Serial.begin(115200);
-	pinMode(13, OUTPUT);										// We will drive the LED.
+	pinMode(LED_BUILTIN, OUTPUT);										// We will drive the LED.
 	
-	// Signon message.
-	consolePrint(CONSOLE_PRINT_NEWLINE, 0); 
-	consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("Arduino Console Example"));
+	FConsole.begin(console_cmds_user, Serial);
+
+	// Signon message, note two newlines to leave a gap from any preceding output on the terminal.
+	// Also note no following newline as the console prints one at startup, then a prompt. 
+	consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(CONSOLE_OUTPUT_NEWLINE_STR CONSOLE_OUTPUT_NEWLINE_STR "Arduino Console Example"));
 	
-	consoleInit();												// Setup console.
-	print_console_prompt();										// Start off with a prompt.
+	FConsole.prompt();
 }
 
 void loop() {
-	if (Serial.available()) {									// If a character is available...
-		const char c = Serial.read();
-		console_rc_t rc = consoleAccept(c);						// Add it to the input buffer.
-		if (CONSOLE_RC_ERROR_ACCEPT_BUFFER_OVERFLOW == rc) {		// Check for overflow...
-			consolePrint(CONSOLE_PRINT_STR, (console_cell_t)consoleAcceptBuffer());				// Echo input line back to terminal. 
-			print_console_seperator();		
-			consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("Input buffer overflow."));
-			print_console_prompt();
-		}
-		else if (CONSOLE_RC_OK == rc) {						// Check for a newline...
-			consolePrint(CONSOLE_PRINT_STR, (console_cell_t)consoleAcceptBuffer());				// Echo input line back to terminal. 
-			print_console_seperator();							// Print separator before output.
-			rc = consoleProcess(consoleAcceptBuffer());			// Process input string from input buffer filled by accept and record error code. 
-			if (CONSOLE_RC_OK != rc) {						// If all went well then we get an OK status code
-				consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR("Error: "));						// Print error code:(
-				consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)consoleGetErrorDescription(rc));	// Print description.
-				consolePrint(CONSOLE_PRINT_STR_P, (console_cell_t)PSTR(": "));
-				consolePrint(CONSOLE_PRINT_SIGNED, (console_cell_t)PSTR(rc);
-			}
-			print_console_prompt();								// In any case print a newline and prompt ready for the next line of input. 
-		}
-	}
+	FConsole.service();
 }

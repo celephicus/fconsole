@@ -1,0 +1,9 @@
+# Ignore codelite junk.
+*.txt
+*.mk
+Makefile
+.codelite
+compile_commands.json
+build-Debug/
+
+

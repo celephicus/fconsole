@@ -1,10 +1,13 @@
-# Syntax Coloring Map For ExampleLibrary
+# Syntax Coloring Map For FConsole library.
 
 # Datatypes (KEYWORD1)
-Test    KEYWORD1
+FConsole	KEYWORD1
 
 # Methods and Functions (KEYWORD2)
-doSomething KEYWORD2
+begin 		KEYWORD2
+prompt 		KEYWORD2
+service 	KEYWORD2
+r_cmds_user KEYWORD2
 
 # Instances (KEYWORD2)
 
