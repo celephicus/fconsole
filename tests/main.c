@@ -271,14 +271,17 @@ int main(int argc, char **argv) {
 	if (sizeof(console_int_t) == 2) {
 		mu_run_test(check_console("$FFFF", "",				CONSOLE_RC_OK,				1, 0xffff));
 		mu_run_test(check_console("$10000", "",				CONSOLE_RC_ERR_NUM_OVF,	0));
+		mu_run_test(check_console("$FFFFF", "",				CONSOLE_RC_ERR_NUM_OVF,	0));
 	}
 	else if (sizeof(console_int_t) == 4) {
 		mu_run_test(check_console("$FFFFFFFF", "",			CONSOLE_RC_OK,				1, 0xffffffff));
 		mu_run_test(check_console("$100000000", "",			CONSOLE_RC_ERR_NUM_OVF,	0));
+		mu_run_test(check_console("$FFFFFFFFF", "",			CONSOLE_RC_ERR_NUM_OVF,	0));
 	}
 	else if (sizeof(console_int_t) == 8) {
 		mu_run_test(check_console("$FFFFFFFFFFFFFFFF", "",	CONSOLE_RC_OK,				1, 0xffffffffffffffff));
 		mu_run_test(check_console("$10000000000000000", "",	CONSOLE_RC_ERR_NUM_OVF,	0));
+		mu_run_test(check_console("$FFFFFFFFFFFFFFFFF", "",	CONSOLE_RC_ERR_NUM_OVF,	0));
 	}
 	else
 		mu_run_test("console_int_t not 16, 32 or 64 bit!");

@@ -103,9 +103,12 @@ static bool convert_number(console_uint_t* number, console_small_uint_t base, co
 		if (digit >= base)
 			return false;		   /* Cannot convert with current base. */
 
+		// Accumulate digits. Signal overflow if previous accumulator value non-zero _AND_ value does not increase.
+		// We need the non-zero test to catch the case of all 1's in accumulator with an extra 'f' in hex.
+		// This was not getting caught.
 		const console_uint_t old_number = *number;
 		*number = *number * base + digit;
-		if (old_number > *number)		// Magnitude change signals overflow.
+		if ((old_number > (console_uint_t)0U) && (old_number >= *number))		
 			console_raise(CONSOLE_RC_ERR_NUM_OVF);
 	}
 
