@@ -206,16 +206,19 @@ exit:	*wp = '\0';						// Terminate string in input buffer.
 
 // Example output routines.
 #if 0
-console_print(uint8_t s, console_cell_t x) {
+console_print(uint8_t s, console_cell_t x, const char* sep) {
 	switch (s) {
-		case CONSOLE_PRINT_NEWLINE:		printf("\r\n")); (void)x; break;
-		case CONSOLE_PRINT_SIGNED:		printf("%d ", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	printf("+%u ", (console_ucell_t)x); break;
-		case CONSOLE_PRINT_HEX:			printf("$%4x ", (console_ucell_t)x); break;
-		case CONSOLE_PRINT_STR:			 fall through... */
-		case CONSOLE_PRINT_STR_P:		printf("%s ", (const char*)x); break;
-		default:						/* ignore */; break;
+		case CONSOLE_PRINT_NEWLINE:		printf("\r\n")); (void)x; return;
+		default:						/* ignore */; return;
+		
+		case CONSOLE_PRINT_SIGNED:		printf("%d", x); break;
+		case CONSOLE_PRINT_UNSIGNED:	printf("+%u", (console_ucell_t)x); break;
+		case CONSOLE_PRINT_HEX:			printf("$%4x", (console_ucell_t)x); break;
+		case CONSOLE_PRINT_STR:			/* fall through... */
+		case CONSOLE_PRINT_STR_P:		puts((const char*)x); break;
+		case CONSOLE_PRINT_CHAR: 		putc((char)x); break;
 	}
+	puts(sep ? sep : " ");			// Print seperator or just a space. 
 }
 #endif
 

@@ -26,6 +26,7 @@ enum {
 	CONSOLE_PRINT_HEX,
 	CONSOLE_PRINT_STR,
 	CONSOLE_PRINT_STR_P,
+	CONSOLE_PRINT_CHAR,
 };
 void consolePrint(uint8_t s, console_cell_t x);
 
