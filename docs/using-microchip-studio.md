@@ -54,12 +54,40 @@ PIN | JTAG   | ISP/DebugWire
 ## Creating your project for Debugging
 
 I suggest starting with a very simply example Arduino project, such as the Blinky example. If you do a Google search for "arduino project microchip studio"
-and do some reading, there are some good guides there. I would miss the video from Microchip. 
+and do some reading, there are some good guides there. I would miss the video from Microchip. Be aware that you will end up with a large quantity of files that are simply copied from the Arduino core and library, personally I do not check this mess in.
 
 Here's how to do it. 
 
-1. Make sure that you have the location of the Arduino project that you want to debug. make sure that you include all the libraries that you will need at
-any point in the development, even if they will not be required for the final project, as there is no way to add Arduino libraries to the Microchip Studio
-project.
-2. Start a new project, and select option "Create project from Arduino sketch". 
-3. Set the name of the new project, I usually set it to the same as the Arduino sketch.
+0. Make sure that your project _builds_ in the Arduino environment.
+
+1. Make sure that you know the location on the filesystem of the Arduino project that you want to debug. Make sure that you include all the libraries that you will need at any point in the development, even if they will not be required for the final project, as there is no way to add Arduino libraries to the Microchip Studio project, and you will have to go through this all again.
+
+2. Start a new project with menu File -> New -> Project, and select option "Create project from Arduino sketch". See ![atmel-studio-new-arduino-project-dialog.png]
+
+3. Set the *Name* of the new project, I usually set it to the same as the Arduino sketch, but with 'as-' leading the name, e.g 'foo' turns into 'as-foo'. This allows an easy rule for gitignore files to ignore all dirs matching the pattern 'as*/'.
+
+4. Set the *Location* of the project, this is up to you but I choose the directory _containing_ the original Arduino sketch. This keeps them associated.
+
+5. Make sure that the *Solution* dropdown is set to "Create New Solution", and that the *Create directory for solution" box is _not_ ticked.
+
+6. Click OK, you should now see _another_ dialog, like this: ![create-cpp-project-from-arduino-sketch-dialog.png]
+
+7. Set the *Sketch File* to the full path to your sketch file, which will have extension '.ino'. I have to copy the path in by selecting it in Windows Explorer as Atmel Studio crashes if I use the *...* button to browse.
+
+8. Make sure that the *Arduino IDE PAth* box is correct, it always seems to be for me.
+
+9. Select your *Board* & *Device* on the dropdown lists. For some reason Atmel Studio gets the Board right but gives up on Device.
+
+10. Click *OK*. This takes some time as it copies hundreds of files.
+
+11. Have a look at the monster that you have created! Look in the project directory you selected first off. There will be a file `as-<sketch>.atsln` which is the Atmel Studio solution file, that contains references to the two projects that Atmel Studio has created. There will also be a directory `as-<sketch>` containing the two project directories named `Arduino-Core` and `<sketch>`.
+
+12. I do this because it keeps things nicely associated. Move the `as-<sketch>.atsln` file _into_ the `as-<sketch>` directory. OPen it up with a text editor. *Do not* double click it, this will open up Atmel Studio. Edit the two lines referring to project files with extension '.cppproj'. Don't forget to save it.
+
+`as-<sketch>\<sketch>\<sketch>.cppproj` -> `<sketch>\<sketch>.cppproj`
+`as-<sketch>\Arduino-Core\Arduino-Core.cppproj` -> `Arduino-Core\Arduino-Core.cppproj`
+
+13. Now you can double click on the solution file, and Atmel Studio should start.
+
+14. Now we set some sensible build options before we do a build. Did you know that Arduino runs gcc with warnings turned off? Shocking! Personally I enable every warning I can, this actually finds some bugs in third party libraries, mostly due to Arduino AVR gcc being somewhat older version that the gcc used for ARM. 
+
