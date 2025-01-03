@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 #include "console.h"
-#include "FConsole.h"
+#include "fconsole.h"
 #include "console-internals.h"
 
 #include <Stream.h>
