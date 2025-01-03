@@ -325,7 +325,7 @@ bool console_cmds_help(char* cmd) {	return false; }
 #ifdef CONSOLE_WANT_PRINT_FUNC
 void consolePrintStream(FILE *stream, console_small_uint_t opt, console_int_t x) {
 	switch (opt & ~(CONSOLE_PRINT_NO_LEAD|CONSOLE_PRINT_NO_SEP)) {
-		case CONSOLE_PRINT_NEWLINE:		fprintf(stream, "\n"); (void)x; return;	// No separator.
+		case CONSOLE_PRINT_NEWLINE:		fprintf(stream, CONSOLE_OUTPUT_NEWLINE_STR; (void)x; return;	// No separator.
 		default:						(void)x; return;						// Ignore, print nothing.
 		case CONSOLE_PRINT_SIGNED:		fprintf(stream, "%" CONSOLE_PRINTF_FMT_MOD "d", x); break;
 		case CONSOLE_PRINT_UNSIGNED:	fprintf(stream, "%s%" CONSOLE_PRINTF_FMT_MOD "u", (opt & CONSOLE_PRINT_NO_LEAD) ? "" : "+", (console_uint_t)x); break;

@@ -66,6 +66,9 @@ typedef int8_t  console_small_int_t;
 // Character to signal EOL for input string.
 #define CONSOLE_INPUT_NEWLINE_CHAR '\r'
 
+// String for output newline.
+#define CONSOLE_OUTPUT_NEWLINE_STR "\n"
+
 // We want some help included. 
 #define CONSOLE_WANT_HELP
 

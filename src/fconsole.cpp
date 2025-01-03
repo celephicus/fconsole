@@ -3,7 +3,6 @@
 
 #include "console.h"
 #include "fconsole.h"
-#include "console-internals.h"
 
 #include <Stream.h>
 #include <stdarg.h>
@@ -71,10 +70,11 @@ void _FConsole::service() {
 		const char c = FConsole.s_stream->read();
 		console_rc_t rc = consoleAccept(c);						// Add it to the input buffer.
 		if (rc >= CONSOLE_RC_OK) {								// On newline...
+			char* cmd = NULL;
 			consolePrint(CONSOLE_PRINT_STR, (console_int_t)consoleAcceptBuffer());	// Echo input line back to terminal.
 			print_console_seperator();							// Seperator string for output.
 			if (CONSOLE_RC_OK == rc)							// If accept has _NOT_ returned an error process the input...
-				rc = consoleProcess(consoleAcceptBuffer());		// Process input string from input buffer filled by accept and record error code.
+				rc = consoleProcess(consoleAcceptBuffer(), &cmd); // Process input string from input buffer filled by accept and record error code.
 			if (CONSOLE_RC_OK != rc) {							// If all went well then we get an OK status code
 				consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)PSTR("Error:")); // Print error code:(
 				consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)consoleGetErrorDescription(rc)); // Print description.
