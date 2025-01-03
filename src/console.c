@@ -336,7 +336,6 @@ void consolePrintStream(FILE *stream, console_small_uint_t opt, console_int_t x)
 		case CONSOLE_PRINT_CHAR:		fprintf(stream, "%c", (char)x); break;
 	}
 	if (!(opt & CONSOLE_PRINT_NO_SEP))	fprintf(stream, " ");								// Print a space.
-	//fprintf(stream, "*");
 }
 #endif
 
