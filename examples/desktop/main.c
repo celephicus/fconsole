@@ -20,9 +20,8 @@ static const console_recogniser_func RECOGNISERS[] = {
 	NULL
 };
 
-static void prompt(void) {
-	printf("\n> ");
-}
+static void prompt(void) { fputs("\n> ", stdout); }
+static void seperator(void) { fputs(" -> ", stdout); }
 
 // Linux requires this to emulate TurboC getch(). Copied from Stackoverflow
 #include <termios.h>
@@ -50,19 +49,20 @@ int main(int argc, char **argv) {
 
 	while (1) {
 		const char c = (char)getch();
-		if (CONSOLE_INPUT_NEWLINE_CHAR != c)	// Don't echo newline.
+		if (CONSOLE_INPUT_NEWLINE_CHAR != c)			// Don't echo newline.
 			putchar(c);
-		console_rc_t rc = consoleAccept(c);		// Add it to the input buffer.
-		if (rc >= CONSOLE_RC_OK) {				// On newline...
-			char* cmd;
-			fputs(" -> ", stdout); 				// Seperator string for output.
-			rc = consoleProcess(consoleAcceptBuffer(), &cmd);	// Process input string from input buffer filled by accept and record error code.
-			if (CONSOLE_RC_OK != rc) {			// If all went well then we get an OK status code.
-				if (CONSOLE_RC_ERR_USER == rc) {
+		console_rc_t rc = consoleAccept(c);				// Add it to the input buffer.
+		if (rc >= CONSOLE_RC_OK) {						// On newline...
+			const char* cmd = "??";						// Last command on error.
+			seperator(); 								// Seperator string for output.
+			if (CONSOLE_RC_OK == rc)					// Only process if no error from accept...
+				rc = consoleProcess(consoleAcceptBuffer(), &cmd);	// Process input and record new error code.
+			if (CONSOLE_RC_OK != rc) {					// If all went well then we get an OK status code.
+				if (CONSOLE_RC_ERR_USER == rc) {		// Exit error code.
 					puts("Bye...");
 					break;
 				}
-				printf("Error in command `%s': %s (%d)", cmd, consoleGetErrorDescription(rc), rc);
+				printf("Error in command `%s': %s (%d)", cmd , consoleGetErrorDescription(rc), rc);
 			}
 			prompt();							// In any case print a newline and prompt ready for the next line of input.
 		}

@@ -325,17 +325,21 @@ bool console_cmds_help(char* cmd) {	return false; }
 #ifdef CONSOLE_WANT_PRINT_FUNC
 void consolePrintStream(FILE *stream, console_small_uint_t opt, console_int_t x) {
 	switch (opt & ~(CONSOLE_PRINT_NO_LEAD|CONSOLE_PRINT_NO_SEP)) {
-		case CONSOLE_PRINT_NEWLINE:		fprintf(stream, CONSOLE_OUTPUT_NEWLINE_STR; (void)x; return;	// No separator.
+		case CONSOLE_PRINT_NEWLINE:		fputs(CONSOLE_OUTPUT_NEWLINE_STR, stream); (void)x; return;	// No separator.
 		default:						(void)x; return;						// Ignore, print nothing.
 		case CONSOLE_PRINT_SIGNED:		fprintf(stream, "%" CONSOLE_PRINTF_FMT_MOD "d", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	fprintf(stream, "%s%" CONSOLE_PRINTF_FMT_MOD "u", (opt & CONSOLE_PRINT_NO_LEAD) ? "" : "+", (console_uint_t)x); break;
-		case CONSOLE_PRINT_HEX:			fprintf(stream, "%s%016" CONSOLE_PRINTF_FMT_MOD "X", (opt & CONSOLE_PRINT_NO_LEAD) ? "" : "$", (console_uint_t)x); break;
-		case CONSOLE_PRINT_HEX2:		fprintf(stream, "%s%02"  CONSOLE_PRINTF_FMT_MOD "X",  (opt & CONSOLE_PRINT_NO_LEAD) ? "" : "$", (console_uint_t)x & 0xff); break;
+		case CONSOLE_PRINT_UNSIGNED:	if (!(opt & CONSOLE_PRINT_NO_LEAD)) fputc('+', stream);
+										fprintf(stream, "%" CONSOLE_PRINTF_FMT_MOD "u", (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX:			if (!(opt & CONSOLE_PRINT_NO_LEAD)) fputc('$', stream);
+										// A simple printf won't have the '*' width option.
+										fprintf(stream, "%0*" CONSOLE_PRINTF_FMT_MOD "X", (int)sizeof(console_uint_t)*2, (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX2:		if (!(opt & CONSOLE_PRINT_NO_LEAD)) fputc('$', stream);
+										fprintf(stream, "%02"  CONSOLE_PRINTF_FMT_MOD "X", (console_uint_t)x & 0xff); break;
 		case CONSOLE_PRINT_STR_P:		/* Fall through... */
-		case CONSOLE_PRINT_STR:			fprintf(stream, "%s",(const char*)x); break;
-		case CONSOLE_PRINT_CHAR:		fprintf(stream, "%c", (char)x); break;
+		case CONSOLE_PRINT_STR:			fputs((const char*)x, stream); break;
+		case CONSOLE_PRINT_CHAR:		fputc((char)x, stream); break;
 	}
-	if (!(opt & CONSOLE_PRINT_NO_SEP))	fprintf(stream, " ");								// Print a space.
+	if (!(opt & CONSOLE_PRINT_NO_SEP))	fputc(' ', stream);								// Print a space.
 }
 #endif
 
@@ -363,7 +367,7 @@ void consoleInit(const console_recogniser_func* r_list) {
 	console_u_clear();
 }
 
-console_rc_t consoleProcess(char* str, char** current) {
+console_rc_t consoleProcess(char* str, const char** current) {
 	char* volatile cmd;				// Necessary to avoid warning from setjmp clobber variables optimised into registers.
 	char* volatile vstr = str;
 	console_rc_t command_rc;

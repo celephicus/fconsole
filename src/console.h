@@ -101,7 +101,7 @@ const char* consoleGetErrorDescription(console_rc_t err);
 /* Evaluate a line of string input. Note that the parser unusually writes back to the input string. 
 	It will never go beyond the terminating nul.
 	If pointer current supplied it is set to command in the input buffer that has been executed. */
-console_rc_t consoleProcess(char* str, char** current);
+console_rc_t consoleProcess(char* str, const char** current);
 
 // Input functions, may be helpful.
 
