@@ -9,6 +9,7 @@
  #include <Arduino.h>
  #include <avr/pgmspace.h>	
  #define CONSOLE_READ_PTR(x_) pgm_read_ptr(x_)		
+ #define CONSOLE_READ_U16(x_) pgm_read_word(x_)		
  #define CONSOLE_READ_BYTE(x_) pgm_read_byte(x_)		
  #define CONSOLE_PROGMEM PROGMEM	
  #define CONSOLE_PSTR(s_) PSTR(s_)	
@@ -16,11 +17,13 @@
  #include <Arduino.h>
  #include <pgmspace.h>	
  #define CONSOLE_READ_PTR(x_) pgm_read_ptr(x_)		
- #define CONSOLE_READ_BYTE(x_) pgm_read_byte(x_)		
+  #define CONSOLE_READ_U16(x_) pgm_read_word(x_)		
+#define CONSOLE_READ_BYTE(x_) pgm_read_byte(x_)		
  #define CONSOLE_PROGMEM PROGMEM	
  #define CONSOLE_PSTR(s_) PSTR(s_)	
 #else
  #define CONSOLE_READ_PTR(x_) (*(x_))					
+ #define CONSOLE_READ_U16(x_) (*(x_))	
  #define CONSOLE_READ_BYTE(x_) (*(x_))
  #define CONSOLE_PROGMEM /* empty */	
  #define CONSOLE_PSTR(s_) s_

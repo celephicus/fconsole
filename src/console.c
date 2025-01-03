@@ -306,7 +306,7 @@ bool console_cmds_help(char* cmd) {
 			const uint16_t cmd_hash = console_hash((const char*)console_u_pop());
 			const uint16_t* hh = &help_hashes[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_hashes)/sizeof(help_hashes[0]); i += 1, hh += 1) {
-				if((uint16_t)CONSOLE_READ_PTR(hh) == cmd_hash) {
+				if((uint16_t)CONSOLE_READ_U16(hh) == cmd_hash) {
 					consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)CONSOLE_READ_PTR(&help_cmds[i]));
 					return true;
 				}
