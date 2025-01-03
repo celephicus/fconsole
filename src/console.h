@@ -37,9 +37,11 @@ enum {
 	CONSOLE_PRINT_SIGNED,		// Prints second arg as a signed integer, e.g `-123 ', `0 ', `456 ', note trailing SPACE.
 	CONSOLE_PRINT_UNSIGNED,		// Print second arg as an unsigned integer, e.g `+0 ', `+123 ', note trailing SPACE.
 	CONSOLE_PRINT_HEX,			// Print second arg as a hex integer, e.g `$0000 ', `$abcd ', note trailing SPACE.
+	CONSOLE_PRINT_HEX2,			// Print 2 hex digits, e.g `$00 ', `$ab ', note trailing SPACE.
 	CONSOLE_PRINT_STR,			// Print second arg as pointer to string in RAM, with trailing space.
 	CONSOLE_PRINT_STR_P,		// Print second arg as pointer to string in PROGMEM, with trailing space.
 	CONSOLE_PRINT_CHAR,			// Print second arg as char, with trailing space.
+	CONSOLE_PRINT_NO_LEAD = 0x40,	// AND with option to _NOT_ print some leading characters.
 	CONSOLE_PRINT_NO_SEP = 0x80	// AND with option to _NOT_ print a trailing space.
 };
 void consolePrint(console_small_uint_t opt, console_int_t x);

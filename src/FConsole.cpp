@@ -16,12 +16,16 @@ _FConsole FConsole;
 	for testing you can set this in FConsole and not use any of its other functions. */
 void consolePrint(uint_least8_t opt, console_int_t x) {
 	if (FConsole.s_stream) {			// If an output stream has not been set do nothing.
-		switch (opt & 0x7f) {
+		switch (opt & ~(CONSOLE_PRINT_NO_SEP|CONSOLE_PRINT_NO_LEAD)) {
 			case CONSOLE_PRINT_NEWLINE:		FConsole.s_stream->print(F(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return; 	// No separator.
 			default:						(void)x; return;															// Ignore, print nothing.
 			case CONSOLE_PRINT_SIGNED:		FConsole.s_stream->print(x, DEC); break;
-			case CONSOLE_PRINT_UNSIGNED:	FConsole.s_stream->print('+'); FConsole.s_stream->print((console_uint_t)x, DEC); break;
-			case CONSOLE_PRINT_HEX:			FConsole.s_stream->print('$');
+			case CONSOLE_PRINT_UNSIGNED:	if (opt & CONSOLE_PRINT_NO_LEAD) FConsole.s_stream->print('+'); 
+											FConsole.s_stream->print((console_uint_t)x, DEC); break;
+			case CONSOLE_PRINT_HEX2:		if (opt & CONSOLE_PRINT_NO_LEAD) FConsole.s_stream->print('$');
+											if ((console_uint_t)x <= 0x0f) FConsole.s_stream->print(0);
+											FConsole.s_stream->print((console_uint_t)x & 0xffU, HEX); break;
+			case CONSOLE_PRINT_HEX:			if (opt & CONSOLE_PRINT_NO_LEAD) FConsole.s_stream->print('$');
 											for (console_uint_t m = 0xf; CONSOLE_UINT_MAX != m; m = (m << 4) | 0xf) {
 												if ((console_uint_t)x <= m)
 													FConsole.s_stream->print(0);
