@@ -1,6 +1,6 @@
 CC := gcc
 
-DEFINES := -DCONSOLE_USE_LOCAL_CONFIG
+DEFINES := 
 
 # Set of fairly pedantic warnings flags.
 CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogical-op -Wmissing-declarations \
@@ -31,8 +31,8 @@ $(TARGET): main.o console.o
 	$(CC) -o $@ $^
 
 # Header dependancies.
-main.o: console-config-local.h console.h 
-console.o: console-config-local.h console.h
+main.o: console-config.h console.h 
+console.o: console-config.h console.h
 
 # One rule for all "C" source files.
 %.o: %.c 

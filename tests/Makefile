@@ -1,6 +1,6 @@
 CC := gcc
 
-DEFINES := -DCONSOLE_USE_LOCAL_CONFIG
+DEFINES := 
 
 # Set of fairly pedantic warnings flags.
 CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogical-op -Wmissing-declarations \
@@ -35,9 +35,9 @@ $(TARGET): main.o console.o minunit.o
 	$(CC) $(GCOV_LDFLAGS) -o $@ $^
 
 # Header dependancies.
-main.o: console-config-local.h console.h minunit.h minunit_config.h
+console.o: console-config.h console.h
+main.o: console-config.h console.h minunit.h minunit_config.h
 minunit.o: minunit.h minunit_config.h 
-console.o: console-config-local.h console.h
 
 # One rule for all "C" source files.
 %.o: %.c 

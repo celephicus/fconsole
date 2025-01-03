@@ -15,7 +15,7 @@ enum {
 
 /* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 	can have potentially any hash value so could look like commands. */
-static const console_recogniser_func RECOGNISERS[] PROGMEM = {
+static const console_recogniser_func RECOGNISERS[] = {
 	console_r_number_decimal,
 	console_r_number_hex,
 	console_r_string,
@@ -29,25 +29,28 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 };
 
 // Test print routine, writes to string.
-static char print_output_buf[100], *print_output_p;
-static void print_output_init(void) { print_output_p = print_output_buf; }
-static const char* print_output_get(void) { *print_output_p = '\0'; return print_output_buf; }
-void consolePrint(console_small_uint_t opt, console_int_t x) {
-	int nch = 0;
-	switch (opt & 0x7f) {
-		case CONSOLE_PRINT_NEWLINE:		nch = sprintf(print_output_p, "\n"); (void)x; opt |= CONSOLE_PRINT_NO_SEP; break;	// No separator.
-		default:						(void)x; opt |= CONSOLE_PRINT_NO_SEP; break;						// Ignore, print nothing.
-		case CONSOLE_PRINT_SIGNED:		nch = sprintf(print_output_p, "%ld", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	nch = sprintf(print_output_p, "+%lu", (console_uint_t)x); break;
-		case CONSOLE_PRINT_HEX:			nch = sprintf(print_output_p, "$%016lX", (console_uint_t)x); break;
-		case CONSOLE_PRINT_STR_P:		/* Fall through... */
-		case CONSOLE_PRINT_STR:			nch = sprintf(print_output_p, "%s",(const char*)x); break;
-		case CONSOLE_PRINT_CHAR:		nch = sprintf(print_output_p, "%c", (char)x); break;
+static char print_output_buf[100];
+static FILE* fh_print;
+static void print_output_init(void) { 
+
+	if (fh_print) {
+		fclose(fh_print); 
+		fh_print = NULL;
 	}
-	print_output_p += nch;
-	if (!(opt & CONSOLE_PRINT_NO_SEP))	nch = sprintf(print_output_p, "%c",' ');								// Print a space.
-	print_output_p += nch;
+	fh_print = fopen("print_output.txt", "w"); 
 }
+static const char* print_output_get(void) { 
+	if (fh_print) {
+		fclose(fh_print); 
+		fh_print = fopen("print_output.txt", "r");
+		size_t nread = fread(print_output_buf, 1, sizeof(print_output_buf)-1, fh_print);
+		fclose(fh_print); 
+		fh_print = NULL;
+		print_output_buf[nread] = '\0';
+	}
+	return print_output_buf; 
+}
+void consolePrint(console_small_uint_t opt, console_int_t x) { consolePrintStream(fh_print, opt, x); }
 
 const char* mu_test_setup(void) {
 	print_output_init();
@@ -56,7 +59,7 @@ const char* mu_test_setup(void) {
 	return NULL;
 }
 void mu_test_teardown(void) {
-	/* empty */
+	remove("print_output.txt");
 }
 
 // Test test harness.
@@ -87,7 +90,7 @@ static char* check_console(const char* input, const char* output, console_rc_t r
 	mu_add_msg("Stack: [%d] ", console_u_depth());
 	i = console_u_depth();
 	while (i-- > 0)
-		mu_add_msg("%" CONSOLE_FORMAT_INT " ", console_u_get(i)); 
+		mu_add_msg("%" CONSOLE_PRINTF_FMT_MOD "d ", console_u_get(i)); 
 
 	// Verify stack, starting with depth, then contents.
 	if (console_u_depth() != depth_expected) 
@@ -160,7 +163,7 @@ static char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_e
 
 int main(int argc, char **argv) {
 	(void)argc; (void)argv;
-	printf(PSTR("Console Unit Tests: %u bit.\n"), (unsigned)(8 * sizeof(console_int_t)));
+	printf(CONSOLE_PSTR("Console Unit Tests: %u bit.\n"), (unsigned)(8 * sizeof(console_int_t)));
 
 	mu_init();
 
@@ -185,6 +188,7 @@ int main(int argc, char **argv) {
 		mu_run_test(check_print(CONSOLE_PRINT_HEX, 						(console_int_t)0xffff, 		"$FFFF "));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX,						0, 				"$0000 "));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,	0, 				"$0000"));
+		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_LEAD,	0, 				"0000 "));
 	}
 	else if (sizeof(console_int_t) == 4) {	
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					2147483647L, 	"2147483647 "));
@@ -193,6 +197,7 @@ int main(int argc, char **argv) {
 		mu_run_test(check_print(CONSOLE_PRINT_HEX, 						(console_int_t)0xffffffff, 	"$FFFFFFFF "));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX,						0, 				"$00000000 "));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,	0, 				"$00000000"));
+		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_LEAD, 0, 				"00000000 "));
 	}
 	else if (sizeof(console_int_t) == 8) {	
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					(console_int_t)9223372036854775807L, 	"9223372036854775807 "));
@@ -203,21 +208,36 @@ int main(int argc, char **argv) {
 		mu_run_test(check_print(CONSOLE_PRINT_HEX, 						(console_int_t)0xffffffffffffffffUL, 	"$FFFFFFFFFFFFFFFF "));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX,						0, 				"$0000000000000000 "));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,	0, 				"$0000000000000000"));
+		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_LEAD, 0, 				"0000000000000000 "));
 	}
 	else
 		mu_run_test("console_int_t not 16, 32 or 64 bit!");
 
+	mu_run_test(check_print(CONSOLE_PRINT_HEX2,							0x1234, 				"$34 "));
+
+	// No trailing space.
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED|CONSOLE_PRINT_NO_SEP, 32767, 			"32767"));
+	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED|CONSOLE_PRINT_NO_SEP, (console_int_t)0xffff, 		"+65535"));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX2|CONSOLE_PRINT_NO_SEP,	0x1234, 				"$34"));
+
+	// No leading char.
+	mu_run_test(check_print(CONSOLE_PRINT_SIGNED|CONSOLE_PRINT_NO_LEAD, -32767, 			"-32767 "));	// Ignored.
+	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED|CONSOLE_PRINT_NO_LEAD, (console_int_t)0xffff, 		"65535 "));
+	mu_run_test(check_print(CONSOLE_PRINT_HEX2|CONSOLE_PRINT_NO_LEAD,	0x1234, 				"34 "));
+
+	// Stringz
 	mu_run_test(check_print(CONSOLE_PRINT_STR, (console_int_t)"hello", "hello "));
-	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_int_t)PSTR("hello"), "hello "));
-	mu_run_test(check_print(CONSOLE_PRINT_CHAR, 'x', "x "));
+	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP, (console_int_t)"hello", "hello"));
+	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_LEAD, (console_int_t)"hello", "hello ")); // Ignored.
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_int_t)CONSOLE_PSTR("hello"), "hello ")); 
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP, (console_int_t)CONSOLE_PSTR("hello"), "hello"));
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_LEAD, (console_int_t)CONSOLE_PSTR("hello"), "hello ")); // Ignored.
+ 
+ 	mu_run_test(check_print(CONSOLE_PRINT_CHAR, 'x', "x "));
+ 	mu_run_test(check_print(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP, 'x', "x"));
 
 	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE|CONSOLE_PRINT_NO_SEP,		1235, "\n"));  // NO_SEP has no effect. 
 	mu_run_test(check_print((CONSOLE_PRINT_NO_SEP-1)|CONSOLE_PRINT_NO_SEP,	1235, ""));		// No output for bad format..
-	mu_run_test(check_print(CONSOLE_PRINT_SIGNED|CONSOLE_PRINT_NO_SEP,		0, "0"));
-	mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED|CONSOLE_PRINT_NO_SEP,	0, "+0"));
-	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP,			(console_int_t)"hello", "hello"));
-	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP,		(console_int_t)PSTR("hello"), "hello"));
-	mu_run_test(check_print(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP,		(console_int_t)'x', "x"));
 
 	// Test console...
 	mu_run_test(check_console("", "",						CONSOLE_RC_OK,				0));

@@ -7,7 +7,7 @@
 
 /* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 	can have potentially any hash value so could look like commands. */
-static const console_recogniser_func RECOGNISERS[] PROGMEM = {
+static const console_recogniser_func RECOGNISERS[] = {
 	console_r_number_decimal,
 	console_r_number_hex,
 	console_r_string,
@@ -21,7 +21,7 @@ static const console_recogniser_func RECOGNISERS[] PROGMEM = {
 };
 
 static void prompt(void) {
-	printf("\n>");
+	printf("\n> ");
 }
 
 // Linux requires this to emulate TurboC getch(). Copied from Stackoverflow
@@ -70,17 +70,4 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-void consolePrint(console_small_uint_t opt, console_int_t x) {
-	switch (opt & 0x7f) {
-		case CONSOLE_PRINT_NEWLINE:		printf("\n"); (void)x; return; 				// No separator.
-		default:						(void)x; return;							// Ignore, print nothing.
-		case CONSOLE_PRINT_SIGNED:		printf("%ld", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	printf("+%lu", (console_uint_t)x); break;
-		case CONSOLE_PRINT_HEX:			printf("$%lx", (console_uint_t)x); break;
-		case CONSOLE_PRINT_STR_P:		/* Fall through... */
-		case CONSOLE_PRINT_STR:			fputs((const char*)x, stdout); break;
-		case CONSOLE_PRINT_CHAR:		putchar((char)x); break;
-	}
-	if (!(opt & CONSOLE_PRINT_NO_SEP))	putchar(' ');								// Print a space.
-}
-
+void consolePrint(console_small_uint_t opt, console_int_t x) { consolePrintStream(stdout, opt, x); }

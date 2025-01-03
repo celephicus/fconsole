@@ -5,16 +5,7 @@
 extern "C" {
 #endif
 
-// Allow a local include file to override the various CONSOLE_xxx macros. Else we have some canned definitions
-#if defined(CONSOLE_CONFIG_DEFAULT_H__) || defined(CONSOLE_CONFIG_LOCAL_H__)
-#error console-config-local.h included with console-config-default.h
-#endif
-
-#ifdef CONSOLE_USE_LOCAL_CONFIG
-#include "console-config-local.h"
-#else
-#include "console-config-default.h"
-#endif
+#include "console-config.h"
 
 /* Get max/min for types. This only works because we assume two's complement representation 
  * and we have checked that the signed & unsigned types are compatible. */
@@ -45,6 +36,12 @@ enum {
 	CONSOLE_PRINT_NO_SEP = 0x80	// AND with option to _NOT_ print a trailing space.
 };
 void consolePrint(console_small_uint_t opt, console_int_t x);
+
+// Helper function for testing.
+#ifdef CONSOLE_WANT_PRINT_FUNC
+#include <stdio.h>
+void consolePrintStream(FILE *stream, console_small_uint_t opt, console_int_t x);
+#endif
 
 // Prototypes for various recogniser functions.
 

@@ -272,6 +272,7 @@ bool console_cmds_example(char* cmd) {
 		case /** EXIT ( - ?) Exit console. **/ 0xc745: console_raise(CONSOLE_RC_ERR_USER); break;	// Custom exception.
 		case /** PICK (u - x) Copy stack item by index. **/ 0x13b4: console_u_tos() = console_u_get((console_small_uint_t)console_u_tos()+1); break;
 		case /** OVER (x1 x2 - x1 x2 x1) Copy second stack item. **/ 0x398b: console_u_push(console_u_nos()); break;
+		case /** PRINT (x i - ) Call consolePrint(i, x). **/ 0x47b4: { uint8_t opt = (uint8_t)console_u_pop(); consolePrint(opt, console_u_pop()); } break;
 		default: return false;
 	}
 	return true;
@@ -288,15 +289,15 @@ bool console_cmds_help(char* cmd) {
 			const char* const * hh = &help_cmds[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_cmds)/sizeof(help_cmds[0]); i += 1, hh += 1) {
 				consolePrint(CONSOLE_PRINT_NEWLINE, 0);
-				consolePrint(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP, (console_int_t)pgm_read_ptr(hh));
+				consolePrint(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP, (console_int_t)CONSOLE_READ_PTR(hh));
 			}
 		} break;
 		case /** ?HELP ( - ) Print list of all commands. **/ 0x74cb: {
 			const char* const * hh = &help_cmds[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_cmds)/sizeof(help_cmds[0]); i += 1, hh += 1) {
-				const char* str = (const char*)pgm_read_ptr(hh);
+				const char* str = (const char*)CONSOLE_READ_PTR(hh);
 				char c;
-				while ((' ' != (c = (char)pgm_read_byte(str++))) && ('\0' != c))
+				while ((' ' != (c = (char)CONSOLE_READ_BYTE(str++))) && ('\0' != c))
 					consolePrint(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP, c);
 				consolePrint(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP, ' ');
 			}
@@ -305,8 +306,8 @@ bool console_cmds_help(char* cmd) {
 			const uint16_t cmd_hash = console_hash((const char*)console_u_pop());
 			const uint16_t* hh = &help_hashes[0];
 			for (console_small_uint_t i = 0; i < sizeof(help_hashes)/sizeof(help_hashes[0]); i += 1, hh += 1) {
-				if((uint16_t)pgm_read_ptr(hh) == cmd_hash) {
-					consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)pgm_read_ptr(&help_cmds[i]));
+				if((uint16_t)CONSOLE_READ_PTR(hh) == cmd_hash) {
+					consolePrint(CONSOLE_PRINT_STR_P, (console_int_t)CONSOLE_READ_PTR(&help_cmds[i]));
 					return true;
 				}
 			}
@@ -321,19 +322,21 @@ bool console_cmds_help(char* cmd) {	return false; }
 #endif // CONSOLE_WANT_HELP
 
 // Example output routines.
-#if 0
-void consolePrint(console_small_uint_t opt, console_int_t x) {
-	switch (opt & 0x7f) {
-		case CONSOLE_PRINT_NEWLINE:		printf(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return;
-		default:						/* ignore */; return;
-		case CONSOLE_PRINT_SIGNED:		printf("%d ", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	printf("+%u ", (console_uint_t)x); break;
-		case CONSOLE_PRINT_HEX:			printf("$%4x ", (console_uint_t)x); break;
-		case CONSOLE_PRINT_STR:			/* fall through... */
-		case CONSOLE_PRINT_STR_P:		puts((const char*)x); break;
-		case CONSOLE_PRINT_CHAR:		putc((char)x); break;
+#ifdef CONSOLE_WANT_PRINT_FUNC
+void consolePrintStream(FILE *stream, console_small_uint_t opt, console_int_t x) {
+	switch (opt & ~(CONSOLE_PRINT_NO_LEAD|CONSOLE_PRINT_NO_SEP)) {
+		case CONSOLE_PRINT_NEWLINE:		fprintf(stream, "\n"); (void)x; return;	// No separator.
+		default:						(void)x; return;						// Ignore, print nothing.
+		case CONSOLE_PRINT_SIGNED:		fprintf(stream, "%" CONSOLE_PRINTF_FMT_MOD "d", x); break;
+		case CONSOLE_PRINT_UNSIGNED:	fprintf(stream, "%s%" CONSOLE_PRINTF_FMT_MOD "u", (opt & CONSOLE_PRINT_NO_LEAD) ? "" : "+", (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX:			fprintf(stream, "%s%016" CONSOLE_PRINTF_FMT_MOD "X", (opt & CONSOLE_PRINT_NO_LEAD) ? "" : "$", (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX2:		fprintf(stream, "%s%02"  CONSOLE_PRINTF_FMT_MOD "X",  (opt & CONSOLE_PRINT_NO_LEAD) ? "" : "$", (console_uint_t)x & 0xff); break;
+		case CONSOLE_PRINT_STR_P:		/* Fall through... */
+		case CONSOLE_PRINT_STR:			fprintf(stream, "%s",(const char*)x); break;
+		case CONSOLE_PRINT_CHAR:		fprintf(stream, "%c", (char)x); break;
 	}
-	if (!(opt & CONSOLE_PRINT_NO_SEP))	putc(' ');			// Print a space unless instructed not to.
+	if (!(opt & CONSOLE_PRINT_NO_SEP))	fprintf(stream, " ");								// Print a space.
+	//fprintf(stream, "*");
 }
 #endif
 
@@ -345,7 +348,7 @@ static console_rc_t execute(char* cmd) {
 	// Try all recognisers in turn until one works.
 	const console_recogniser_func* rp = f_console_ctx.recognisers;
 	while (1) {
-		const console_recogniser_func r = (console_recogniser_func)pgm_read_ptr(rp++);
+		const console_recogniser_func r = (console_recogniser_func)CONSOLE_READ_PTR(rp++);
 		if (NULL == r)										// Exit at end.
 			break;
 		if (r(cmd))											// Call recogniser function, returns true on success.
@@ -404,15 +407,15 @@ error:		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really e
 // Print description of error code.
 const char* consoleGetErrorDescription(console_rc_t err) {
 	switch(err) {
-		case CONSOLE_RC_ERR_NO_CHEESE: 	return PSTR(" ++?????++ Out of Cheese Error. Redo From Start");
-		case CONSOLE_RC_ERR_NUM_OVF: 	return PSTR("number overflow");
-		case CONSOLE_RC_ERR_DSTK_UNF: 	return PSTR("stack underflow");
-		case CONSOLE_RC_ERR_DSTK_OVF: 	return PSTR("stack overflow");
-		case CONSOLE_RC_ERR_ACC_OVF: 	return PSTR("input buffer overflow");
-		case CONSOLE_RC_ERR_BAD_IDX:	return PSTR("index out of range");
-		case CONSOLE_RC_ERR_BAD_CMD: 	return PSTR("unknown command");
-		case CONSOLE_RC_ERR_DIV_ZERO: 	return PSTR("divide by zero");
-		default: 						return PSTR("??");
+		case CONSOLE_RC_ERR_NO_CHEESE: 	return CONSOLE_PSTR(" ++?????++ Out of Cheese Error. Redo From Start");
+		case CONSOLE_RC_ERR_NUM_OVF: 	return CONSOLE_PSTR("number overflow");
+		case CONSOLE_RC_ERR_DSTK_UNF: 	return CONSOLE_PSTR("stack underflow");
+		case CONSOLE_RC_ERR_DSTK_OVF: 	return CONSOLE_PSTR("stack overflow");
+		case CONSOLE_RC_ERR_ACC_OVF: 	return CONSOLE_PSTR("input buffer overflow");
+		case CONSOLE_RC_ERR_BAD_IDX:	return CONSOLE_PSTR("index out of range");
+		case CONSOLE_RC_ERR_BAD_CMD: 	return CONSOLE_PSTR("unknown command");
+		case CONSOLE_RC_ERR_DIV_ZERO: 	return CONSOLE_PSTR("divide by zero");
+		default: 						return CONSOLE_PSTR("??");
 	}
 }
 

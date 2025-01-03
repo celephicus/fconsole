@@ -74,7 +74,7 @@ for file_pattern in args.files:
 		message('\n')
 
 def ss(s): return s.replace('"', '\\"')
-help_decl_cmd_text = '\n'.join([f'static const char cmd_help_{h:04X}[] PROGMEM = PSTR("{ss(c[1] + " " + c[2])}");' for h, c in cmds.items()])
+help_decl_cmd_text = '\n'.join([f'static const char cmd_help_{h:04X}[] CONSOLE_PROGMEM = CONSOLE_PSTR("{ss(c[1] + " " + c[2])}");' for h, c in cmds.items()])
 help_decl_cmds = '\n'.join([f'    cmd_help_{h:04X},' for h in cmds])
 help_decl_hashes = '\n'.join([f'    0x{h:04X},' for h in cmds])
 				
@@ -85,11 +85,11 @@ if output_dir is not None:
 
 {help_decl_cmd_text}
 
-static const char* const help_cmds[] PROGMEM = {{
+static const char* const help_cmds[] CONSOLE_PROGMEM = {{
 {help_decl_cmds}
 }};
 
-static const uint16_t help_hashes[] PROGMEM = {{
+static const uint16_t help_hashes[] CONSOLE_PROGMEM = {{
 {help_decl_hashes}
 }};
 
