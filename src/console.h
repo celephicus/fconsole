@@ -17,10 +17,8 @@ extern "C" {
 	false if they cannot parse the input string. If they do parse it, they might call raise() if they cannot push a value onto the stack. */
 typedef bool (*console_recogniser_func)(char* cmd);
 
-/* Initialise the console with the NULL-terminated list of recogniser functions (in PROGMEM) that are tried in order.
-	If one returns false, then the next recogniser is called. If a recogniser returns true then the command is taken to have worked. If
-	a recogniser calls console_raise() then the process aborts with the error code.  */
-void consoleInit(const console_recogniser_func* r_list);
+/* Initialise the console .  */
+void consoleInit(void);
 
 // Function to print on the output stream. You must supply this. An example is in a comment in console.cpp. Unknown options are ignored and cause no output.
 enum {
@@ -36,12 +34,6 @@ enum {
 	CONSOLE_PRINT_NO_SEP = 0x80	// AND with option to _NOT_ print a trailing space.
 };
 void consolePrint(console_small_uint_t opt, console_int_t x);
-
-// Helper function for testing.
-#ifdef CONSOLE_WANT_PRINT_FUNC
-#include <stdio.h>
-void consolePrintStream(FILE *stream, console_small_uint_t opt, console_int_t x);
-#endif
 
 // Prototypes for various recogniser functions.
 

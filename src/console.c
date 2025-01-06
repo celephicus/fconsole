@@ -33,7 +33,6 @@ typedef struct {
 	console_int_t dstack[CONSOLE_DATA_STACK_SIZE];	// Our stack, grows down in memory.
 	console_int_t* sp;								// Stack pointer, points to topmost item. 
 	jmp_buf jmpbuf;									// How we do aborts.
-	const console_recogniser_func* recognisers;		// List of recogniser functions in PROGMEM. 
 } console_context_t;
 
 static console_context_t f_console_ctx;
@@ -317,29 +316,72 @@ bool console_cmds_help(char* cmd) {
 	}
 	return true;
 }
-#else
-bool console_cmds_help(char* cmd) {	return false; }
 #endif // CONSOLE_WANT_HELP
 
-// Example output routines.
-#ifdef CONSOLE_WANT_PRINT_FUNC
-void consolePrintStream(FILE *stream, console_small_uint_t opt, console_int_t x) {
+// Static list of recogniser functions. Any extra must be listed in the config header. 
+/* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
+	can have potentially any hash value so could look like commands. */
+static const console_recogniser_func RECOGNISERS[] = {
+#ifdef CONSOLE_WANT_STANDARD_COMMANDS	
+	console_r_number_decimal,
+	console_r_number_hex,
+	console_r_string,
+	console_r_hex_string,
+	console_cmds_builtin,
+ #ifdef CONSOLE_WANT_HELP
+	console_cmds_help, 
+ #endif 
+ #ifdef CONSOLE_WANT_EXAMPLE_COMMANDS
+	console_cmds_example,
+ #endif 
+#endif 
+	CONSOLE_USER_RECOGNISERS
+	NULL
+};
+
+// Generic output routine.
+#ifdef CONSOLE_DEFINE_PRINT
+void consolePrint(console_small_uint_t opt, console_int_t x) {
 	switch (opt & ~(CONSOLE_PRINT_NO_LEAD|CONSOLE_PRINT_NO_SEP)) {
-		case CONSOLE_PRINT_NEWLINE:		fputs(CONSOLE_OUTPUT_NEWLINE_STR, stream); (void)x; return;	// No separator.
+		case CONSOLE_PRINT_NEWLINE:		CONSOLE_PRINTF(CONSOLE_PSTR("%" CONSOLE_PRINTF_FMT_PSTR), CONSOLE_OUTPUT_NEWLINE_STR); (void)x; return;	// No separator.
 		default:						(void)x; return;						// Ignore, print nothing.
-		case CONSOLE_PRINT_SIGNED:		fprintf(stream, "%" CONSOLE_PRINTF_FMT_MOD "d", x); break;
-		case CONSOLE_PRINT_UNSIGNED:	if (!(opt & CONSOLE_PRINT_NO_LEAD)) fputc('+', stream);
-										fprintf(stream, "%" CONSOLE_PRINTF_FMT_MOD "u", (console_uint_t)x); break;
-		case CONSOLE_PRINT_HEX:			if (!(opt & CONSOLE_PRINT_NO_LEAD)) fputc('$', stream);
-										// A simple printf won't have the '*' width option.
-										fprintf(stream, "%0*" CONSOLE_PRINTF_FMT_MOD "X", (int)sizeof(console_uint_t)*2, (console_uint_t)x); break;
-		case CONSOLE_PRINT_HEX2:		if (!(opt & CONSOLE_PRINT_NO_LEAD)) fputc('$', stream);
-										fprintf(stream, "%02"  CONSOLE_PRINTF_FMT_MOD "X", (console_uint_t)x & 0xff); break;
-		case CONSOLE_PRINT_STR_P:		/* Fall through... */
-		case CONSOLE_PRINT_STR:			fputs((const char*)x, stream); break;
-		case CONSOLE_PRINT_CHAR:		fputc((char)x, stream); break;
+		case CONSOLE_PRINT_SIGNED:		CONSOLE_PRINTF(CONSOLE_PSTR("%" CONSOLE_PRINTF_FMT_MOD "d"), x); break;
+		case CONSOLE_PRINT_UNSIGNED:	if (!(opt & CONSOLE_PRINT_NO_LEAD)) CONSOLE_PRINTF(CONSOLE_PSTR("+"));
+										CONSOLE_PRINTF(CONSOLE_PSTR("%" CONSOLE_PRINTF_FMT_MOD "u"), (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX:			if (!(opt & CONSOLE_PRINT_NO_LEAD)) CONSOLE_PRINTF(CONSOLE_PSTR("$"));
+										CONSOLE_PRINTF(CONSOLE_PSTR("%0*" CONSOLE_PRINTF_FMT_MOD "X"), (int)sizeof(console_uint_t)*2, (console_uint_t)x); break;
+		case CONSOLE_PRINT_HEX2:		if (!(opt & CONSOLE_PRINT_NO_LEAD)) CONSOLE_PRINTF(CONSOLE_PSTR("$"));
+										CONSOLE_PRINTF(CONSOLE_PSTR("%02" CONSOLE_PRINTF_FMT_MOD "X"), (console_uint_t)x & 0xff); break;
+		case CONSOLE_PRINT_STR_P:		CONSOLE_PRINTF(CONSOLE_PSTR("%" CONSOLE_PRINTF_FMT_PSTR), (const char*)x); break;
+		case CONSOLE_PRINT_STR:			CONSOLE_PRINTF(CONSOLE_PSTR("%s"), (const char*)x); break;
+		case CONSOLE_PRINT_CHAR:		CONSOLE_PRINTF(CONSOLE_PSTR("%c"), (char)x); break;
 	}
-	if (!(opt & CONSOLE_PRINT_NO_SEP))	fputc(' ', stream);								// Print a space.
+	if (!(opt & CONSOLE_PRINT_NO_SEP))	CONSOLE_PRINTF(CONSOLE_PSTR(" "));								// Print a space.
+}
+#endif
+
+#ifdef CONSOLE_DEFINE_PRINT_ARDUINO
+void consolePrint(uint_least8_t opt, console_int_t x) {
+	switch (opt & ~(CONSOLE_PRINT_NO_SEP|CONSOLE_PRINT_NO_LEAD)) {
+		case CONSOLE_PRINT_NEWLINE:		CONSOLE_ARDUINO_STREAM.print(F(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return; 	// No separator.
+		default:						(void)x; return;															// Ignore, print nothing.
+		case CONSOLE_PRINT_SIGNED:		CONSOLE_ARDUINO_STREAM.print(x, DEC); break;
+		case CONSOLE_PRINT_UNSIGNED:	if (opt & CONSOLE_PRINT_NO_LEAD) CONSOLE_ARDUINO_STREAM.print('+'); 
+										CONSOLE_ARDUINO_STREAM.print((console_uint_t)x, DEC); break;
+		case CONSOLE_PRINT_HEX2:		if (opt & CONSOLE_PRINT_NO_LEAD) CONSOLE_ARDUINO_STREAM.print('$');
+										if ((console_uint_t)x <= 0x0f) CONSOLE_ARDUINO_STREAM.print(0);
+										CONSOLE_ARDUINO_STREAM.print((console_uint_t)x & 0xffU, HEX); break;
+		case CONSOLE_PRINT_HEX:			if (opt & CONSOLE_PRINT_NO_LEAD) CONSOLE_ARDUINO_STREAM.print('$');
+										for (console_uint_t m = 0xf; CONSOLE_UINT_MAX != m; m = (m << 4) | 0xf) {
+											if ((console_uint_t)x <= m)
+												CONSOLE_ARDUINO_STREAM.print(0);
+										}
+										CONSOLE_ARDUINO_STREAM.print((console_uint_t)x, HEX); break;
+		case CONSOLE_PRINT_STR:			CONSOLE_ARDUINO_STREAM.print((const char*)x); break;
+		case CONSOLE_PRINT_STR_P:		CONSOLE_ARDUINO_STREAM.print((const __FlashStringHelper*)x); break;
+		case CONSOLE_PRINT_CHAR:		CONSOLE_ARDUINO_STREAM.print((char)x); break;
+	}
+	if (!(opt & CONSOLE_PRINT_NO_SEP))	CONSOLE_ARDUINO_STREAM.print(' ');			// Print a space.
 }
 #endif
 
@@ -349,7 +391,7 @@ static bool is_nul(char c) { return ('\0' == c); }
 // Execute a single command from a string
 static console_rc_t execute(char* cmd) {
 	// Try all recognisers in turn until one works.
-	const console_recogniser_func* rp = f_console_ctx.recognisers;
+	const console_recogniser_func* rp = RECOGNISERS;
 	while (1) {
 		const console_recogniser_func r = (console_recogniser_func)CONSOLE_READ_PTR(rp++);
 		if (NULL == r)										// Exit at end.
@@ -362,8 +404,7 @@ static console_rc_t execute(char* cmd) {
 
 // External functions.
 
-void consoleInit(const console_recogniser_func* r_list) {
-	f_console_ctx.recognisers = r_list;
+void consoleInit(void) {
 	console_u_clear();
 }
 

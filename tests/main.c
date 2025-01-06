@@ -8,58 +8,26 @@
 
 #include "minunit.h"
 
-// Recogniser to support our tests.
-enum {
-	CONSOLE_RC_ERR_USER_EXIT = CONSOLE_RC_ERR_USER, // Exit from program
-};
-
-/* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
-	can have potentially any hash value so could look like commands. */
-static const console_recogniser_func RECOGNISERS[] = {
-	console_r_number_decimal,
-	console_r_number_hex,
-	console_r_string,
-	console_r_hex_string,
-	console_cmds_builtin,
-#ifdef CONSOLE_WANT_HELP
-	console_cmds_help, 
-#endif // CONSOLE_WANT_HELP
-	console_cmds_example,
-	NULL
-};
-
 // Test print routine, writes to string.
-static char print_output_buf[100];
-static FILE* fh_print;
-static void print_output_init(void) { 
-
-	if (fh_print) {
-		fclose(fh_print); 
-		fh_print = NULL;
-	}
-	fh_print = fopen("print_output.txt", "w"); 
-}
+static char print_output_buf[100], *print_output_p;
+static void print_output_init(void) { print_output_p = print_output_buf; *print_output_p = '\0'; }
 static const char* print_output_get(void) { 
-	if (fh_print) {
-		fclose(fh_print); 
-		fh_print = fopen("print_output.txt", "r");
-		size_t nread = fread(print_output_buf, 1, sizeof(print_output_buf)-1, fh_print);
-		fclose(fh_print); 
-		fh_print = NULL;
-		print_output_buf[nread] = '\0';
-	}
 	return print_output_buf; 
 }
-void consolePrint(console_small_uint_t opt, console_int_t x) { consolePrintStream(fh_print, opt, x); }
+void console_printf(const char*fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int ns = vsprintf(print_output_p, fmt, ap);
+	print_output_p += ns;
+}
 
 const char* mu_test_setup(void) {
 	print_output_init();
-	consoleInit(RECOGNISERS);							// Setup console.
+	consoleInit();							// Setup console.
 	consoleAcceptClear();								// NOT done by console Init. 
 	return NULL;
 }
 void mu_test_teardown(void) {
-	remove("print_output.txt");
 }
 
 // Test test harness.

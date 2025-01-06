@@ -5,20 +5,13 @@
 
 #include "console.h"
 
-/* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
-	can have potentially any hash value so could look like commands. */
-static const console_recogniser_func RECOGNISERS[] = {
-	console_r_number_decimal,
-	console_r_number_hex,
-	console_r_string,
-	console_r_hex_string,
-	console_cmds_builtin,
-#ifdef CONSOLE_WANT_HELP
-	console_cmds_help, 
-#endif // CONSOLE_WANT_HELP
-	console_cmds_example,
-	NULL
-};
+bool console_cmds_user(char* cmd) {
+	switch (console_hash(cmd)) {
+		case /** 2+ (x1 - x2) Add 2 to TOS. **/ 0x685c: console_u_tos() += 2; break;
+		default: return false;
+	}
+	return true;
+}
 
 static void prompt(void) { fputs("\n> ", stdout); }
 static void seperator(void) { fputs(" -> ", stdout); }
@@ -42,7 +35,7 @@ static int getch(void) {
 
 int main(int argc, char **argv) {
 	(void)argc; (void)argv;
-	consoleInit(RECOGNISERS);							// Setup console.
+	consoleInit();							// Setup console.
 	printf("\n\n" 
 	      "FConsole Example -- `exit' to quit.");
 	prompt();
@@ -69,5 +62,3 @@ int main(int argc, char **argv) {
 	}
 	return 0;
 }
-
-void consolePrint(console_small_uint_t opt, console_int_t x) { consolePrintStream(stdout, opt, x); }
