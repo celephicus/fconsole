@@ -321,7 +321,7 @@ bool console_cmds_help(char* cmd) {
 // Static list of recogniser functions. Any extra must be listed in the config header. 
 /* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 	can have potentially any hash value so could look like commands. */
-static const console_recogniser_func RECOGNISERS[] = {
+static const console_recogniser_func RECOGNISERS[] CONSOLE_PROGMEM = {
 #ifdef CONSOLE_WANT_STANDARD_COMMANDS	
 	console_r_number_decimal,
 	console_r_number_hex,
