@@ -343,7 +343,7 @@ static const console_recogniser_func RECOGNISERS[] = {
 #ifdef CONSOLE_DEFINE_PRINT
 void consolePrint(console_small_uint_t opt, console_int_t x) {
 	switch (opt & ~(CONSOLE_PRINT_NO_LEAD|CONSOLE_PRINT_NO_SEP)) {
-		case CONSOLE_PRINT_NEWLINE:		CONSOLE_PRINTF(CONSOLE_PSTR("%" CONSOLE_PRINTF_FMT_PSTR), CONSOLE_OUTPUT_NEWLINE_STR); (void)x; return;	// No separator.
+		case CONSOLE_PRINT_NEWLINE:		CONSOLE_PRINTF(CONSOLE_PSTR(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return;	// No separator.
 		default:						(void)x; return;						// Ignore, print nothing.
 		case CONSOLE_PRINT_SIGNED:		CONSOLE_PRINTF(CONSOLE_PSTR("%" CONSOLE_PRINTF_FMT_MOD "d"), x); break;
 		case CONSOLE_PRINT_UNSIGNED:	if (!(opt & CONSOLE_PRINT_NO_LEAD)) CONSOLE_PRINTF(CONSOLE_PSTR("+"));
