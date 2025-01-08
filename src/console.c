@@ -280,7 +280,7 @@ bool console_cmds_example(char* cmd) {
 // Optional help commands.
 #ifdef CONSOLE_WANT_HELP
 
-#include "console_help.autogen.inc"
+#include "console_help.autogen.h"
 
 bool console_cmds_help(char* cmd) {
 	switch (console_hash(cmd)) {

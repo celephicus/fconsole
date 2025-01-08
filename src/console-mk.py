@@ -22,7 +22,7 @@ def error(msg):
 	print(f"{PROGNAME}: Error: {msg}", file=sys.stderr)
 	sys.exit()
 
-HELP_FN = 'console_help.autogen.inc'
+HELP_FN = 'console_help.autogen.h'
 
 def hash(s):
 	HASH_START, HASH_MULT = 5381, 33 # DJB2 algorithm, original code from a cave painting.
