@@ -449,20 +449,15 @@ error:		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really e
 }
 
 // Print description of error code.
+#define CONSOLE_DEF_ERROR_CODE_ERR_STR(v_, s_) case CONSOLE_RC_ERR_ ## v_: return CONSOLE_PSTR(s_);
+
 const char* consoleGetErrorDescription(console_rc_t err) {
 	switch(err) {
-		case CONSOLE_RC_ERR_NO_CHEESE: 	return CONSOLE_PSTR(" ++?????++ Out of Cheese Error. Redo From Start");
-		case CONSOLE_RC_ERR_NUM_OVF: 	return CONSOLE_PSTR("number overflow");
-		case CONSOLE_RC_ERR_DSTK_UNF: 	return CONSOLE_PSTR("stack underflow");
-		case CONSOLE_RC_ERR_DSTK_OVF: 	return CONSOLE_PSTR("stack overflow");
-		case CONSOLE_RC_ERR_ACC_OVF: 	return CONSOLE_PSTR("input buffer overflow");
-		case CONSOLE_RC_ERR_ACC_CANCEL: return CONSOLE_PSTR("input cancelled");
-		case CONSOLE_RC_ERR_BAD_IDX:	return CONSOLE_PSTR("index out of range");
-		case CONSOLE_RC_ERR_BAD_CMD: 	return CONSOLE_PSTR("unknown command");
-		case CONSOLE_RC_ERR_DIV_ZERO: 	return CONSOLE_PSTR("divide by zero");
+		CONSOLE_DEF_ERROR_CODE(CONSOLE_DEF_ERROR_CODE_ERR_STR)
 		default: 						return CONSOLE_PSTR("??");
 	}
 }
+#undef CONSOLE_DEF_ERROR_CODE_ERR_STR
 
 // Input functions.
 // State for consoleAccept(). Done seperately as if not used the linker will remove it.

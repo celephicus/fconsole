@@ -62,21 +62,27 @@ bool console_cmds_example(char* cmd);
 // Optional help commands, will be empty if CONSOLE_WANT_HELP not defined.
 bool console_cmds_help(char* cmd);
 
-/* Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative values are more like status codes that
-	do not indicate an error. */
+/* Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative 
+	values are more like status codes that do not indicate an error. 
+	Errors are defined with an X macro as they have associated text. They will have codes increasing from 1. */
+#define CONSOLE_DEF_ERROR_CODE(X) 										\
+	X(NO_CHEESE, 	"++?????++ Out of Cheese Error. Redo From Start")	\
+	X(NUM_OVF, 		"number overflow")									\
+	X(DSTK_UNF, 	"stack underflow")									\
+	X(DSTK_OVF, 	"stack overflow")									\
+	X(ACC_OVF, 		"input buffer overflow")							\
+	X(ACC_CANCEL, 	"input cancelled")									\
+	X(BAD_IDX, 		"index out of range")								\
+	X(BAD_CMD, 		"unknown command")									\
+	X(DIV_ZERO, 	"divide by zero")									
+
+#define CONSOLE_DEF_ERROR_CODE_ENUM(v_, s_) CONSOLE_RC_ERR_ ## v_,
 enum {
 	CONSOLE_RC_OK =				0,	// Returned by consoleProcess() for no errors and by consoleAccept() for a newline with no overflow.
 
 	// Errors: something has gone wrong...
-	CONSOLE_RC_ERR_NO_CHEESE =	1,	// Out of Cheese Error: only raised if you try raising an error code of zero.
-	CONSOLE_RC_ERR_NUM_OVF =	2,	// Returned by consoleProcess() (via convert_number()) if a number overflowed it's allowed bounds.
-	CONSOLE_RC_ERR_DSTK_UNF =	3,	// Stack underflowed (attempt to pop or examine too many items).
-	CONSOLE_RC_ERR_DSTK_OVF =	4,	// Stack overflowed (attempt to push too many items).
-	CONSOLE_RC_ERR_ACC_OVF =	5,	// Accept buffer has been sent more characters than it can hold. Only returned by consoleAccept().
-	CONSOLE_RC_ERR_ACC_CANCEL = 6,	// Accept input cancelled by user. Only returned by consoleAccept().
-	CONSOLE_RC_ERR_BAD_IDX =	7,	// Index out of range.
-	CONSOLE_RC_ERR_BAD_CMD =	8,	// A command or value was not recognised.
-	CONSOLE_RC_ERR_DIV_ZERO = 	9,	// Divide by zero.
+	CONSOLE_DEF_ERROR_CODE(CONSOLE_DEF_ERROR_CODE_ENUM)
+
 	CONSOLE_RC_ERR_USER,			// Error codes available for the user.
 
 	// Status...
@@ -84,6 +90,7 @@ enum {
 	CONSOLE_RC_STAT_ACC_PEND =	-2,	// Only returned by consoleAccept() to signal that it is still accepting characters.
 	CONSOLE_RC_STAT_USER =		-3	// Status codes available for the user.
 };
+#undef CONSOLE_DEF_ERROR_CODE_ENUM
 
 // Type for a console API call status code.
 typedef console_small_int_t console_rc_t;
