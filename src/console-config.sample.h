@@ -82,6 +82,9 @@ typedef int8_t  console_small_int_t;
 // Character to signal EOL for input string.
 #define CONSOLE_INPUT_NEWLINE_CHAR '\r'
 
+// Character to cancel current line. If not defined line cancel not implemented. 
+#define CONSOLE_INPUT_CANCEL_CHAR '\\'
+
 // String for output newline.
 #define CONSOLE_OUTPUT_NEWLINE_STR "\n"
 

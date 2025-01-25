@@ -456,6 +456,7 @@ const char* consoleGetErrorDescription(console_rc_t err) {
 		case CONSOLE_RC_ERR_DSTK_UNF: 	return CONSOLE_PSTR("stack underflow");
 		case CONSOLE_RC_ERR_DSTK_OVF: 	return CONSOLE_PSTR("stack overflow");
 		case CONSOLE_RC_ERR_ACC_OVF: 	return CONSOLE_PSTR("input buffer overflow");
+		case CONSOLE_RC_ERR_ACC_CANCEL: return CONSOLE_PSTR("input cancelled");
 		case CONSOLE_RC_ERR_BAD_IDX:	return CONSOLE_PSTR("index out of range");
 		case CONSOLE_RC_ERR_BAD_CMD: 	return CONSOLE_PSTR("unknown command");
 		case CONSOLE_RC_ERR_DIV_ZERO: 	return CONSOLE_PSTR("divide by zero");
@@ -483,7 +484,14 @@ console_rc_t consoleAccept(char c) {
 		consoleAcceptClear();
 		return overflow ? CONSOLE_RC_ERR_ACC_OVF : CONSOLE_RC_OK;
 	}
-	else {
+	else 
+#ifdef CONSOLE_INPUT_CANCEL_CHAR
+	if (CONSOLE_INPUT_CANCEL_CHAR == c) {
+		consoleAcceptClear();
+		return overflow ? CONSOLE_RC_ERR_ACC_OVF : CONSOLE_RC_ERR_ACC_CANCEL;
+	}
+#endif // CONSOLE_INPUT_CANCEL_CHAR
+	{
 		if ((c >= ' ') && (c < (char)0x7f)) {	 // Is is printable?
 			if (!overflow)
 				f_accept_context.inbuf[f_accept_context.inbidx++] = c;

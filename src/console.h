@@ -73,9 +73,10 @@ enum {
 	CONSOLE_RC_ERR_DSTK_UNF =	3,	// Stack underflowed (attempt to pop or examine too many items).
 	CONSOLE_RC_ERR_DSTK_OVF =	4,	// Stack overflowed (attempt to push too many items).
 	CONSOLE_RC_ERR_ACC_OVF =	5,	// Accept buffer has been sent more characters than it can hold. Only returned by consoleAccept().
-	CONSOLE_RC_ERR_BAD_IDX =	6,	// Index out of range.
-	CONSOLE_RC_ERR_BAD_CMD =	7,	// A command or value was not recognised.
-	CONSOLE_RC_ERR_DIV_ZERO = 	8,	// Divide by zero.
+	CONSOLE_RC_ERR_ACC_CANCEL = 6,	// Accept input cancelled by user. Only returned by consoleAccept().
+	CONSOLE_RC_ERR_BAD_IDX =	7,	// Index out of range.
+	CONSOLE_RC_ERR_BAD_CMD =	8,	// A command or value was not recognised.
+	CONSOLE_RC_ERR_DIV_ZERO = 	9,	// Divide by zero.
 	CONSOLE_RC_ERR_USER,			// Error codes available for the user.
 
 	// Status...
