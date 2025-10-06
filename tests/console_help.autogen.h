@@ -20,7 +20,6 @@ static const char cmd_help_4069[] CONSOLE_PROGMEM = "RAISE (i - ) Raise value as
 static const char cmd_help_C745[] CONSOLE_PROGMEM = "EXIT ( - ?) Exit console.";
 static const char cmd_help_13B4[] CONSOLE_PROGMEM = "PICK (u - x) Copy stack item by index.";
 static const char cmd_help_398B[] CONSOLE_PROGMEM = "OVER (x1 x2 - x1 x2 x1) Copy second stack item.";
-static const char cmd_help_47B4[] CONSOLE_PROGMEM = "PRINT (x i - ) Call consolePrint(i, x).";
 static const char cmd_help_B0B4[] CONSOLE_PROGMEM = "??HELP ( - ) Print (wordy) help for all commands.";
 static const char cmd_help_74CB[] CONSOLE_PROGMEM = "?HELP ( - ) Print list of all commands.";
 static const char cmd_help_7D54[] CONSOLE_PROGMEM = "HELP (s - ) Search for help on given command.";
@@ -46,7 +45,6 @@ static const char* const help_cmds[] CONSOLE_PROGMEM = {
     cmd_help_C745,
     cmd_help_13B4,
     cmd_help_398B,
-    cmd_help_47B4,
     cmd_help_B0B4,
     cmd_help_74CB,
     cmd_help_7D54,
@@ -73,7 +71,6 @@ static const uint16_t help_hashes[] CONSOLE_PROGMEM = {
     0xC745,
     0x13B4,
     0x398B,
-    0x47B4,
     0xB0B4,
     0x74CB,
     0x7D54,
