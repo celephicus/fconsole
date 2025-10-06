@@ -1,26 +1,26 @@
 CC := gcc
 
-DEFINES := 
+DEFINES :=
 
 # Set of fairly pedantic warnings flags.
 CFLAGS := -g -O3 -Wall -Wpedantic -Wextra -Wconversion -Wduplicated-cond -Wlogical-op -Wmissing-declarations \
 			-Wpadded -Wshadow -Wstrict-prototypes -Wswitch-default -Wwrite-strings -Wundef -Werror
 
-# We want to do code coverage as well check that we test everything.			
+# We want to do code coverage as well check that we test everything.
 GCOV_CFLAGS = --coverage -O0
-GCOV_LDFLAGS = -lgcov --coverage 
+GCOV_LDFLAGS = -lgcov --coverage
 
 # Where?
 SRCDIR = ../src
 INCLUDES := -I. -I$(SRCDIR)
 TARGET := tests
 
-SRCS = console.c minunit.h main.c 
+SRCS = console.c minunit.h main.c
 
-# Run script to preprocess all source files to generate definitions of console commands. 
+# Run script to preprocess all source files to generate definitions of console commands.
 $(shell ./prebuild.sh)
 
-.PHONY: clean all 
+.PHONY: clean all
 all: $(TARGET)
 
 clean:
@@ -37,8 +37,11 @@ $(TARGET): main.o console.o minunit.o
 # Header dependancies.
 console.o: console-config.h console.h
 main.o: console-config.h console.h minunit.h minunit_config.h
-minunit.o: minunit.h minunit_config.h 
+minunit.o: minunit.h minunit_config.h
 
 # One rule for all "C" source files.
-%.o: %.c 
-	$(CC) $(CFLAGS) $(GCOV_CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@	
+%.o: %.c
+	$(CC) $(CFLAGS) $(GCOV_CFLAGS) $(DEFINES) $(INCLUDES) -c $< -o $@
+
+check_minunit: check_minunit.o minunit.o
+	$(CC) $(GCOV_LDFLAGS) -o $@ $^

@@ -8,11 +8,13 @@
 
 #include "minunit.h"
 
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 // Test print routine, writes to string.
 static char print_output_buf[100], *print_output_p;
 static void print_output_init(void) { print_output_p = print_output_buf; *print_output_p = '\0'; }
-static const char* print_output_get(void) { 
-	return print_output_buf; 
+static const char* print_output_get(void) {
+	return print_output_buf;
 }
 void console_printf(const char*fmt, ...) {
 	va_list ap;
@@ -24,7 +26,7 @@ void console_printf(const char*fmt, ...) {
 const char* mu_test_setup(void) {
 	print_output_init();
 	consoleInit();							// Setup console.
-	consoleAcceptClear();								// NOT done by console Init. 
+	consoleAcceptClear();								// NOT done by console Init.
 	return NULL;
 }
 void mu_test_teardown(void) {
@@ -37,12 +39,6 @@ static const char* check_test_harness_int(console_int_t x) { mu_assert_equal_int
 static const char* check_test_harness_str(const char* s) { mu_assert_equal_str(s, "az"); return NULL; }
 #endif
 
-// Test console output function.
-static char* check_print(console_small_uint_t opt, console_int_t x, const char* output) {
-	consolePrint(opt, x);
-	mu_assert_equal_str(print_output_get(), output);	// Verify output string...
-	return NULL;
-}
 
 static char* check_console(const char* input, const char* output, console_rc_t rc_expected, console_small_uint_t depth_expected, ...) {
 	char inbuf[100];									// Copy input string as we are not meant to write to string literals.
@@ -53,21 +49,21 @@ static char* check_console(const char* input, const char* output, console_rc_t r
 	console_rc_t rc = consoleProcess(inbuf, NULL);		// Process input string.
 	mu_assert_equal_int(rc, rc_expected);				// Verify return code...
 	mu_assert_equal_str(print_output_get(), output);	// Verify output string...
-	
+
 	// Build error message for stack.
 	mu_add_msg("Stack: [%d] ", console_u_depth());
 	i = console_u_depth();
 	while (i-- > 0)
-		mu_add_msg("%" CONSOLE_PRINTF_FMT_MOD "d ", console_u_get(i)); 
+		mu_add_msg("%" CONSOLE_PRINTF_FMT_MOD "d ", console_u_get(i));
 
 	// Verify stack, starting with depth, then contents.
-	if (console_u_depth() != depth_expected) 
+	if (console_u_depth() != depth_expected)
 		return mu_msg;
 
 	va_start(ap, depth_expected);
 	i = console_u_depth();
 	while (i-- > 0) {
-		if (console_u_get(i) != va_arg(ap, console_int_t)) 
+		if (console_u_get(i) != va_arg(ap, console_int_t))
 			return mu_msg;
 	}
 
@@ -91,7 +87,7 @@ static char* check_hex_string(const char* input, console_small_uint_t len_expect
 	mu_add_msg("Hex string: ");
 	i = *mem_ptr++;
 	while (i-- > 0)
-		mu_add_msg("%02X", *mem_ptr++); 
+		mu_add_msg("%02X", *mem_ptr++);
 
 	// Verify memory...
 	mem_ptr = (uint8_t*)console_u_tos();
@@ -101,7 +97,7 @@ static char* check_hex_string(const char* input, console_small_uint_t len_expect
 	va_start(ap, len_expected);
 	i = len_expected;
 	while (i-- > 0) {
-		if (*mem_ptr++ != va_arg(ap, console_int_t)) 
+		if (*mem_ptr++ != va_arg(ap, console_int_t))
 			return mu_msg;
 	}
 
@@ -110,7 +106,7 @@ static char* check_hex_string(const char* input, console_small_uint_t len_expect
 
 static char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected) {
 	console_rc_t rc;
-	
+
 	// Checks will accept up to CONSOLE_INPUT_BUFFER_SIZE chars.
 	char chk[100];
 	char* cp = chk;
@@ -136,12 +132,12 @@ int main(int argc, char **argv) {
 	mu_init();
 
 	// Test test harness.
-#if 0	
+#ifdef CHECK_HARNESS
 	mu_run_test(check_test_harness_int(1234));
 	mu_run_test(check_test_harness_int(-1234));
 	mu_run_test(check_test_harness_str("az"));
 	mu_run_test(check_test_harness_str("a"));
-#endif
+#else
 
 	// Print routine.
 	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE, 						1235, 			"\n"));
@@ -158,7 +154,7 @@ int main(int argc, char **argv) {
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,	0, 				"$0000"));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_LEAD,	0, 				"0000 "));
 	}
-	else if (sizeof(console_int_t) == 4) {	
+	else if (sizeof(console_int_t) == 4) {
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					2147483647L, 	"2147483647 "));
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					-2147483648L, 	"-2147483648 "));
 		mu_run_test(check_print(CONSOLE_PRINT_UNSIGNED, 				(console_int_t)0xffffffff, 	"+4294967295 "));
@@ -167,7 +163,7 @@ int main(int argc, char **argv) {
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_SEP,	0, 				"$00000000"));
 		mu_run_test(check_print(CONSOLE_PRINT_HEX|CONSOLE_PRINT_NO_LEAD, 0, 				"00000000 "));
 	}
-	else if (sizeof(console_int_t) == 8) {	
+	else if (sizeof(console_int_t) == 8) {
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					(console_int_t)9223372036854775807L, 	"9223372036854775807 "));
 		mu_run_test(check_print(CONSOLE_PRINT_SIGNED, 					(console_int_t)(-9223372036854775807L-1), 	"-9223372036854775808 "));
 		/* Why (-9223372036854775807L-1) instead of -9223372036854775808L? Because this is two tokens, a negate op and the constant.
@@ -197,14 +193,14 @@ int main(int argc, char **argv) {
 	mu_run_test(check_print(CONSOLE_PRINT_STR, (console_int_t)"hello", "hello "));
 	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_SEP, (console_int_t)"hello", "hello"));
 	mu_run_test(check_print(CONSOLE_PRINT_STR|CONSOLE_PRINT_NO_LEAD, (console_int_t)"hello", "hello ")); // Ignored.
-	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_int_t)CONSOLE_PSTR("hello"), "hello ")); 
+	mu_run_test(check_print(CONSOLE_PRINT_STR_P, (console_int_t)CONSOLE_PSTR("hello"), "hello "));
 	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_SEP, (console_int_t)CONSOLE_PSTR("hello"), "hello"));
 	mu_run_test(check_print(CONSOLE_PRINT_STR_P|CONSOLE_PRINT_NO_LEAD, (console_int_t)CONSOLE_PSTR("hello"), "hello ")); // Ignored.
- 
+
  	mu_run_test(check_print(CONSOLE_PRINT_CHAR, 'x', "x "));
  	mu_run_test(check_print(CONSOLE_PRINT_CHAR|CONSOLE_PRINT_NO_SEP, 'x', "x"));
 
-	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE|CONSOLE_PRINT_NO_SEP,		1235, "\n"));  // NO_SEP has no effect. 
+	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE|CONSOLE_PRINT_NO_SEP,		1235, "\n"));  // NO_SEP has no effect.
 	mu_run_test(check_print((CONSOLE_PRINT_NO_SEP-1)|CONSOLE_PRINT_NO_SEP,	1235, ""));		// No output for bad format..
 
 	// Test console...
@@ -216,11 +212,11 @@ int main(int argc, char **argv) {
 
 	// Check decimal number parser.
 	mu_run_test(check_console("+a", "",						CONSOLE_RC_ERR_BAD_CMD,	0));	// We could have a command `+a' if we wanted. It's just not a number.
-	mu_run_test(check_console("-f", "",						CONSOLE_RC_ERR_BAD_CMD,	0));	// Likewise `-f' could be a command, but it's not a number. 
+	mu_run_test(check_console("-f", "",						CONSOLE_RC_ERR_BAD_CMD,	0));	// Likewise `-f' could be a command, but it's not a number.
 	mu_run_test(check_console("0", "",						CONSOLE_RC_OK,				1, (console_int_t)0));
 	mu_run_test(check_console("+0", "",						CONSOLE_RC_OK,				1, (console_int_t)0));
 	mu_run_test(check_console("1", "",						CONSOLE_RC_OK,				1, (console_int_t)1));
-	mu_run_test(check_console("1a", "",						CONSOLE_RC_ERR_BAD_CMD, 0));		// Flagged as unknown command, even though it's really a bad base. We could have a command `1a'. 
+	mu_run_test(check_console("1a", "",						CONSOLE_RC_ERR_BAD_CMD, 0));		// Flagged as unknown command, even though it's really a bad base. We could have a command `1a'.
 
 	if (sizeof(console_int_t) == 2) {
 		mu_run_test(check_console("32767", "",				CONSOLE_RC_OK,				1, 32767));
@@ -280,10 +276,10 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("\"\\\\ .\"", "\\ ",			CONSOLE_RC_OK,				0));			// Single backslash.
 	mu_run_test(check_console("\"q .\"", "q ",				CONSOLE_RC_OK,				0));
 	mu_run_test(check_console("\"q\\n\\r\\ .\"", "q\n\r ",	CONSOLE_RC_OK,				0));			// Trailing \ ignored.
-	mu_run_test(check_console("\"\\1f .\"", "\x1f ",		CONSOLE_RC_OK,				0));			// Single character in hex `1f'. 
+	mu_run_test(check_console("\"\\1f .\"", "\x1f ",		CONSOLE_RC_OK,				0));			// Single character in hex `1f'.
 	mu_run_test(check_console("\"\\1g .\"", "1g ",			CONSOLE_RC_OK,				0));			// Bad hex escape.
 
-	// Check hex string 
+	// Check hex string
 	mu_run_test(check_console("&", "",						CONSOLE_RC_ERR_BAD_CMD,	0));				// Bad hex string.
 	mu_run_test(check_console("&1", "",						CONSOLE_RC_ERR_BAD_CMD,	0));				// Bad hex string.
 	mu_run_test(check_console("&1g", "",					CONSOLE_RC_ERR_BAD_CMD,	0));				// Bad hex string.
@@ -372,21 +368,21 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("-123 10 /", "",				CONSOLE_RC_OK,				1, (console_int_t)-12));
 	mu_run_test(check_console("-123 0 /", "",				CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)-123));
 	mu_run_test(check_console("0 0 /", "",					CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)0));
-	
+
 	// Unsigned Divide.
 	mu_run_test(check_console("1 U/", "",					CONSOLE_RC_ERR_DSTK_UNF,	0));
 	mu_run_test(check_console("U/", "",						CONSOLE_RC_ERR_DSTK_UNF,	0));
-	if (sizeof(console_int_t) == 2) 
+	if (sizeof(console_int_t) == 2)
 		mu_run_test(check_console("$fffe 16 U/", "",		CONSOLE_RC_OK,				1, (console_int_t)0xfff));
-	if (sizeof(console_int_t) == 4) 
+	if (sizeof(console_int_t) == 4)
 		mu_run_test(check_console("$fffffffe 16 U/", "",	CONSOLE_RC_OK,				1, (console_int_t)0xfffffff));
-	if (sizeof(console_int_t) == 8) 
+	if (sizeof(console_int_t) == 8)
 		mu_run_test(check_console("$fffffffffffffffe 16 U/", "", CONSOLE_RC_OK,			1, (console_int_t)0xfffffffffffffff));
 	else
 		mu_run_test("console_int_t not 16 or 32 bit!");
 	mu_run_test(check_console("123 0 U/", "",				CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)123));
 	mu_run_test(check_console("0 0 U/", "",					CONSOLE_RC_ERR_DIV_ZERO,	1, (console_int_t)0));
-	
+
 	// Comments & raise.
 	mu_run_test(check_console("EXIT", "",					CONSOLE_RC_ERR_USER,		0));
 	mu_run_test(check_console("127 RAISE", "",				127,						0));
@@ -400,10 +396,9 @@ int main(int argc, char **argv) {
 	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_OK));
 	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+1,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
 	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+2,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
+#endif // CHECK_HARNESS
 
 	mu_print_summary();
 
 	return mu_tests_fail;
 }
-
-

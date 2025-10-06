@@ -1,3 +1,4 @@
 *.o
 tests
-
+check_minunit
+*.gcov
