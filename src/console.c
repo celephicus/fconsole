@@ -13,7 +13,7 @@
 #define utilsIsTypeSigned(T_) (((T_)(-1)) < (T_)0)
 
 // And check for compatibility of the two console integral types. If this is wrong so much will break in surprising ways.
-#pragma GCC diagnostic push 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtype-limits"
 
 STATIC_ASSERT(sizeof(console_int_t) == sizeof(console_uint_t));
@@ -31,7 +31,7 @@ STATIC_ASSERT(sizeof(void*) == sizeof(console_uint_t));
 // Struct to hold the console interpreter's state.
 typedef struct {
 	console_int_t dstack[CONSOLE_DATA_STACK_SIZE];	// Our stack, grows down in memory.
-	console_int_t* sp;								// Stack pointer, points to topmost item. 
+	console_int_t* sp;								// Stack pointer, points to topmost item.
 	jmp_buf jmpbuf;									// How we do aborts.
 } console_context_t;
 
@@ -107,7 +107,7 @@ static bool convert_number(console_uint_t* number, console_small_uint_t base, co
 		// This was not getting caught.
 		const console_uint_t old_number = *number;
 		*number = *number * base + digit;
-		if ((old_number > (console_uint_t)0U) && (old_number >= *number))		
+		if ((old_number > (console_uint_t)0U) && (old_number >= *number))
 			console_raise(CONSOLE_RC_ERR_NUM_OVF);
 	}
 
@@ -240,11 +240,11 @@ bool console_cmds_builtin(char* cmd) {
 		case /** . (d - ) Pop and print as signed decimal. **/ 0xb58b: consolePrint(CONSOLE_PRINT_SIGNED, console_u_pop()); break;
 		case /** U. (u - ) Pop and print as unsigned decimal, with leading `+'. **/ 0x73de: consolePrint(CONSOLE_PRINT_UNSIGNED, console_u_pop()); break;
 		case /** $. (u - ) Pop and print as 4 hex digits with leading `$'. **/ 0x658f: consolePrint(CONSOLE_PRINT_HEX, console_u_pop()); break;
-		case /** ." (s - ) Pop and print string. **/ 0x66c9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break; 		
-		case /** DEPTH ( - u) Push stack depth. **/ 0xb508: console_u_push(console_u_depth()); break;					
-		case /** CLEAR ( ... - <empty>) Remove all items from stack. **/ 0x9f9c: console_u_clear(); break;									
-		case /** DROP (x - ) Remove top item from stack. **/ 0x5c2c: console_u_pop(); break;										
-		case /** HASH (s - u) Pop string and push hash value. **/ 0x90b7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;	
+		case /** ." (s - ) Pop and print string. **/ 0x66c9: consolePrint(CONSOLE_PRINT_STR, console_u_pop()); break;
+		case /** DEPTH ( - u) Push stack depth. **/ 0xb508: console_u_push(console_u_depth()); break;
+		case /** CLEAR ( ... - <empty>) Remove all items from stack. **/ 0x9f9c: console_u_clear(); break;
+		case /** DROP (x - ) Remove top item from stack. **/ 0x5c2c: console_u_pop(); break;
+		case /** HASH (s - u) Pop string and push hash value. **/ 0x90b7: { console_u_tos() = console_hash((const char*)console_u_tos()); } break;
 		default: return false;
 	}
 	return true;
@@ -258,11 +258,11 @@ bool console_cmds_example(char* cmd) {
 		case /** * (d1 d2 - d3) Signed multiply: d3 = d1 * d2. **/ 0xb58f: console_binop(*); break;
 		case /** RSHIFT (u1 n - u2) Logical bitwise shift right: u2 = u1 >> n. **/ 0x6b97: console_u_binop(>>); break;
 		case /** / (d1 d2 - d3) Signed dvide: d3 = d1 / d2. **/ 0xb58a: {
-			const console_int_t rhs = console_u_pop(); if (0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO); 
+			const console_int_t rhs = console_u_pop(); if (0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO);
 			console_u_tos() = console_u_tos() / rhs;
 		} break;
 		case /** U/ (u1 u2 - u3) Unsigned divide: u3 = u1 / u2. **/ 0x73df: {
-			const console_uint_t rhs = (console_uint_t)console_u_pop(); if ((console_uint_t)0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO); 
+			const console_uint_t rhs = (console_uint_t)console_u_pop(); if ((console_uint_t)0 == rhs) console_raise(CONSOLE_RC_ERR_DIV_ZERO);
 			console_u_tos() = (console_int_t)((console_uint_t)console_u_tos() / rhs);
 		} break;
 		case /** NEGATE (d1 - d2) Negate signed value: d2 = -d1. **/ 0x7a79: console_unop(-); break;
@@ -318,23 +318,23 @@ bool console_cmds_help(char* cmd) {
 }
 #endif // CONSOLE_WANT_HELP
 
-// Static list of recogniser functions. Any extra must be listed in the config header. 
+// Static list of recogniser functions. Any extra must be listed in the config header.
 /* The number & string recognisers must be before any recognisers that lookup using a hash, as numbers & strings
 	can have potentially any hash value so could look like commands. */
 static const console_recogniser_func RECOGNISERS[] CONSOLE_PROGMEM = {
-#ifdef CONSOLE_WANT_STANDARD_COMMANDS	
+#ifdef CONSOLE_WANT_STANDARD_COMMANDS
 	console_r_number_decimal,
 	console_r_number_hex,
 	console_r_string,
 	console_r_hex_string,
 	console_cmds_builtin,
  #ifdef CONSOLE_WANT_HELP
-	console_cmds_help, 
- #endif 
+	console_cmds_help,
+ #endif
  #ifdef CONSOLE_WANT_EXAMPLE_COMMANDS
 	console_cmds_example,
- #endif 
-#endif 
+ #endif
+#endif
 	CONSOLE_USER_RECOGNISERS
 	NULL
 };
@@ -366,7 +366,7 @@ void consolePrint(uint_least8_t opt, console_int_t x) {
 		case CONSOLE_PRINT_NEWLINE:		CONSOLE_ARDUINO_STREAM.print(F(CONSOLE_OUTPUT_NEWLINE_STR)); (void)x; return; 	// No separator.
 		default:						(void)x; return;															// Ignore, print nothing.
 		case CONSOLE_PRINT_SIGNED:		CONSOLE_ARDUINO_STREAM.print(x, DEC); break;
-		case CONSOLE_PRINT_UNSIGNED:	if (opt & CONSOLE_PRINT_NO_LEAD) CONSOLE_ARDUINO_STREAM.print('+'); 
+		case CONSOLE_PRINT_UNSIGNED:	if (opt & CONSOLE_PRINT_NO_LEAD) CONSOLE_ARDUINO_STREAM.print('+');
 										CONSOLE_ARDUINO_STREAM.print((console_uint_t)x, DEC); break;
 		case CONSOLE_PRINT_HEX2:		if (opt & CONSOLE_PRINT_NO_LEAD) CONSOLE_ARDUINO_STREAM.print('$');
 										if ((console_uint_t)x <= 0x0f) CONSOLE_ARDUINO_STREAM.print(0);
@@ -412,12 +412,12 @@ console_rc_t consoleProcess(char* str, const char** current) {
 	char* volatile cmd;				// Necessary to avoid warning from setjmp clobber variables optimised into registers.
 	char* volatile vstr = str;
 	console_rc_t command_rc;
-	
+
 	// Establish a point where raise will go to when raise() is called.
-	command_rc = (console_rc_t)setjmp(f_console_ctx.jmpbuf); 
+	command_rc = (console_rc_t)setjmp(f_console_ctx.jmpbuf);
 	if (CONSOLE_RC_OK != command_rc) 	// On a raise we get here, normal program flow will return zero.
 		goto error;						// Handle error and bail.
-		
+
 	// Iterate over input, breaking into words.
 	while (1) {
 		while (is_whitespace(*vstr)) 									// Advance past leading spaces.
@@ -436,12 +436,12 @@ console_rc_t consoleProcess(char* str, const char** current) {
 
 		command_rc = execute(cmd);						// Try to execute command.
 		if (CONSOLE_RC_OK != command_rc) {				// Bail on error.
-error:		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really errors, used to implement things like comments. 
+error:		if (command_rc < CONSOLE_RC_OK) // Negative error codes are not really errors, used to implement things like comments.
 				return CONSOLE_RC_OK;		// Fake no error to caller.
 
 			if (NULL != current)	// Update user pointer to point to last command executed, good for error messages.
 				*current = cmd;
-			return command_rc;		// Return error code to caller. 
+			return command_rc;		// Return error code to caller.
 		}
 	}
 
@@ -479,11 +479,11 @@ console_rc_t consoleAccept(char c) {
 		consoleAcceptClear();
 		return overflow ? CONSOLE_RC_ERR_ACC_OVF : CONSOLE_RC_OK;
 	}
-	else 
+	else
 #ifdef CONSOLE_INPUT_CANCEL_CHAR
 	if (CONSOLE_INPUT_CANCEL_CHAR == c) {
 		consoleAcceptClear();
-		return overflow ? CONSOLE_RC_ERR_ACC_OVF : CONSOLE_RC_ERR_ACC_CANCEL;
+		return overflow ? CONSOLE_RC_ERR_ACC_OVF : CONSOLE_RC_STAT_ACC_CAN;
 	}
 #endif // CONSOLE_INPUT_CANCEL_CHAR
 	{

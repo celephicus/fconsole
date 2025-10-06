@@ -32,13 +32,12 @@ const char* mu_test_setup(void) {
 void mu_test_teardown(void) {
 }
 
-// Test test harness.
-//
-#if 0
-static const char* check_test_harness_int(console_int_t x) { mu_assert_equal_int(x, 1234); return NULL; }
-static const char* check_test_harness_str(const char* s) { mu_assert_equal_str(s, "az"); return NULL; }
-#endif
-
+// Test console output function.
+static char* check_print(console_small_uint_t opt, console_int_t x, const char* output) {
+	consolePrint(opt, x);
+	mu_assert_equal_str(print_output_get(), output);	// Verify output string...
+	return NULL;
+}
 
 static char* check_console(const char* input, const char* output, console_rc_t rc_expected, console_small_uint_t depth_expected, ...) {
 	char inbuf[100];									// Copy input string as we are not meant to write to string literals.
@@ -104,7 +103,7 @@ static char* check_hex_string(const char* input, console_small_uint_t len_expect
 	return NULL;
 }
 
-static char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected) {
+static char* check_accept_ovf(uint8_t char_count, uint8_t len_expected, uint8_t rc_expected) {
 	console_rc_t rc;
 
 	// Checks will accept up to CONSOLE_INPUT_BUFFER_SIZE chars.
@@ -125,19 +124,30 @@ static char* check_accept(uint8_t char_count, uint8_t len_expected, uint8_t rc_e
 	return NULL;
 }
 
+static char* check_accept_non_printable(void) {
+	mu_assert_equal_int(CONSOLE_RC_STAT_ACC_PEND, consoleAccept('a'));
+	mu_assert_equal_int(CONSOLE_RC_STAT_ACC_PEND, consoleAccept('\x1f'));		// Should be ignored.
+	mu_assert_equal_int(CONSOLE_RC_STAT_ACC_PEND, consoleAccept('\xef'));		// Should be ignored.
+	mu_assert_equal_int(CONSOLE_RC_OK, consoleAccept(CONSOLE_INPUT_NEWLINE_CHAR));
+	mu_assert_equal_str(consoleAcceptBuffer(), "a");
+	return NULL;
+}
+
+static char* check_accept_line_cancel(bool overflow) {
+	uint8_t cc = overflow ? CONSOLE_INPUT_BUFFER_SIZE+1 : 1;
+	for (uint8_t i = 0; i < cc; i += 1)
+		mu_assert_equal_int(CONSOLE_RC_STAT_ACC_PEND, consoleAccept('a'));
+
+	mu_assert_equal_int(overflow ? CONSOLE_RC_ERR_ACC_OVF : CONSOLE_RC_STAT_ACC_CAN, consoleAccept(CONSOLE_INPUT_CANCEL_CHAR));
+	// Don't care what buffer contains.
+	return NULL;
+}
+
 int main(int argc, char **argv) {
 	(void)argc; (void)argv;
 	printf(CONSOLE_PSTR("Console Unit Tests: %u bit.\n"), (unsigned)(8 * sizeof(console_int_t)));
 
 	mu_init();
-
-	// Test test harness.
-#ifdef CHECK_HARNESS
-	mu_run_test(check_test_harness_int(1234));
-	mu_run_test(check_test_harness_int(-1234));
-	mu_run_test(check_test_harness_str("az"));
-	mu_run_test(check_test_harness_str("a"));
-#else
 
 	// Print routine.
 	mu_run_test(check_print(CONSOLE_PRINT_NEWLINE, 						1235, 			"\n"));
@@ -390,15 +400,17 @@ int main(int argc, char **argv) {
 	mu_run_test(check_console("1 2 # 3 4", "",				CONSOLE_RC_OK,				2, (console_int_t)1, (console_int_t)2));
 
 	// Test Accept
-	mu_run_test(check_accept(0,								0,								CONSOLE_RC_OK));
-	mu_run_test(check_accept(1,								1,								CONSOLE_RC_OK));
-	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE-1,	CONSOLE_INPUT_BUFFER_SIZE-1,	CONSOLE_RC_OK));
-	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_OK));
-	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+1,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
-	mu_run_test(check_accept(CONSOLE_INPUT_BUFFER_SIZE+2,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
-#endif // CHECK_HARNESS
+	mu_run_test(check_accept_ovf(0,								0,								CONSOLE_RC_OK));
+	mu_run_test(check_accept_ovf(1,								1,								CONSOLE_RC_OK));
+	mu_run_test(check_accept_ovf(CONSOLE_INPUT_BUFFER_SIZE-1,	CONSOLE_INPUT_BUFFER_SIZE-1,	CONSOLE_RC_OK));
+	mu_run_test(check_accept_ovf(CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_OK));
+	mu_run_test(check_accept_ovf(CONSOLE_INPUT_BUFFER_SIZE+1,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
+	mu_run_test(check_accept_ovf(CONSOLE_INPUT_BUFFER_SIZE+2,	CONSOLE_INPUT_BUFFER_SIZE,		CONSOLE_RC_ERR_ACC_OVF));
+	mu_run_test(check_accept_non_printable());
+	mu_run_test(check_accept_line_cancel(false));
+	mu_run_test(check_accept_line_cancel(true));
 
 	mu_print_summary();
 
-	return mu_tests_fail;
+	return mu_rc();
 }

@@ -36,6 +36,7 @@ void mu_test_teardown(void);
 
 // Add a string to a staticbuffer, useful for building error messages. Buffer cleared at start of test.
 char* mu_add_msg(const char* fmt, ...);
+#define mu_msg (mu_ctx.msg)
 
 /* Run a test. Note the test function can take any number of arguments, but it must return a char*.
  	If the test_setup function fails then the test fails and the teardown function is NOT run.
@@ -46,14 +47,14 @@ char* mu_add_msg(const char* fmt, ...);
 	mu_ctx.msg[0] = '\0'; mu_ctx.tests_run++;										\
 	const char* test_result = mu_test_setup();										\
 	setup_ok = !test_result;														\
-	if (setup_ok) { printf("calling test...\n"); 									\
-		test_result = (_test); 	}													\
+	if (setup_ok) 	 							 									\
+		test_result = (_test); 														\
 	if (test_result) {																\
 		mu_ctx.tests_fail++;														\
 		printf(MINUNIT_DECL_STR("Fail: %s: %s\n"), mu_mkstr(_test), test_result);	\
 	}																				\
 	else																			\
-		printf(MINUNIT_DECL_STR("Pass: %s\n"), mu_mkstr(_test));					\
+		printf(MINUNIT_DECL_STR("Pass: %s\n"), mu_mkstr(_test)); 					\
 	if (setup_ok) 																	\
 		mu_test_teardown();															\
 } while (0)

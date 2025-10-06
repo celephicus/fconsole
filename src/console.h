@@ -7,7 +7,7 @@ extern "C" {
 
 #include "console-config.h"
 
-/* Get max/min for types. This only works because we assume two's complement representation 
+/* Get max/min for types. This only works because we assume two's complement representation
  * and we have checked that the signed & unsigned types are compatible. */
 #define CONSOLE_UINT_MAX (~(console_uint_t)(0))
 #define CONSOLE_INT_MAX ((console_int_t)(CONSOLE_UINT_MAX >> 1))
@@ -62,19 +62,18 @@ bool console_cmds_example(char* cmd);
 // Optional help commands, will be empty if CONSOLE_WANT_HELP not defined.
 bool console_cmds_help(char* cmd);
 
-/* Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative 
-	values are more like status codes that do not indicate an error. 
+/* Define possible error codes. The convention is that positive codes are actual errors, zero is OK, and negative
+	values are more like status codes that do not indicate an error.
 	Errors are defined with an X macro as they have associated text. They will have codes increasing from 1. */
-#define CONSOLE_DEF_ERROR_CODE(X) 										\
+#define CONSOLE_DEF_ERROR_CODE(X) 																\
 	X(NO_CHEESE, 	"++?????++ Out of Cheese Error. Redo From Start")	\
-	X(NUM_OVF, 		"number overflow")									\
-	X(DSTK_UNF, 	"stack underflow")									\
-	X(DSTK_OVF, 	"stack overflow")									\
-	X(ACC_OVF, 		"input buffer overflow")							\
-	X(ACC_CANCEL, 	"input cancelled")									\
-	X(BAD_IDX, 		"index out of range")								\
-	X(BAD_CMD, 		"unknown command")									\
-	X(DIV_ZERO, 	"divide by zero")									
+	X(NUM_OVF, 		"number overflow")																\
+	X(DSTK_UNF, 	"stack underflow")																\
+	X(DSTK_OVF, 	"stack overflow")																	\
+	X(ACC_OVF, 		"input buffer overflow")													\
+	X(BAD_IDX, 		"index out of range")															\
+	X(BAD_CMD, 		"unknown command")																\
+	X(DIV_ZERO, 	"divide by zero")
 
 #define CONSOLE_DEF_ERROR_CODE_ENUM(v_, s_) CONSOLE_RC_ERR_ ## v_,
 enum {
@@ -86,9 +85,10 @@ enum {
 	CONSOLE_RC_ERR_USER,			// Error codes available for the user.
 
 	// Status...
-	CONSOLE_RC_STAT_IGN_EOL =	-1,	// Internal signal used to implement comments.
-	CONSOLE_RC_STAT_ACC_PEND =	-2,	// Only returned by consoleAccept() to signal that it is still accepting characters.
-	CONSOLE_RC_STAT_USER =		-3	// Status codes available for the user.
+	CONSOLE_RC_STAT_IGN_EOL =		-1,		// Internal signal used to implement comments.
+	CONSOLE_RC_STAT_ACC_PEND =	-2,		// Only returned by consoleAccept() to signal that it is still accepting characters.
+	CONSOLE_RC_STAT_ACC_CAN = 	-3,		// Only returned by consoleAccept() to signal input cancelled.
+	CONSOLE_RC_STAT_USER =			-4		// Status codes available for the user.
 };
 #undef CONSOLE_DEF_ERROR_CODE_ENUM
 
@@ -98,14 +98,14 @@ typedef console_small_int_t console_rc_t;
 // Return a short description of the error as a pointer to a PROGMEM string.
 const char* consoleGetErrorDescription(console_rc_t err);
 
-/* Evaluate a line of string input. Note that the parser unusually writes back to the input string. 
+/* Evaluate a line of string input. Note that the parser unusually writes back to the input string.
 	It will never go beyond the terminating nul.
 	If pointer current supplied it is set to command in the input buffer that has been executed. */
 console_rc_t consoleProcess(char* str, const char** current);
 
 // Input functions, may be helpful.
 
-/* Resets the state of accept to what it was after calling consoleInit(), or after consoleAccept() has read a newline 
+/* Resets the state of accept to what it was after calling consoleInit(), or after consoleAccept() has read a newline
  * and returned either CONSOLE_RC_OK or CONSOLE_ERROR_INPUT_OVERFLOW. */
 void consoleAcceptClear(void);
 
